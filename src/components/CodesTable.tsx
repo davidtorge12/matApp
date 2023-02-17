@@ -16,7 +16,7 @@ function createData(name: string, calories: number, fat: number, carbs: number, 
 }
 
 const updateMaterials = async (id: string, materials: [string]) => {
-  fetch("http://localhost:3000/code", {
+  fetch("https://mat-app-server.vercel.app/code", {
     method: "POST",
     body: JSON.stringify({ param: { id, materials } }),
     headers: {

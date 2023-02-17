@@ -12,7 +12,7 @@ const UploadButton = ({ setData }: { setData: any }) => {
 
   const dataFetch = async () => {
     const jsonArr = JSON.stringify(codesArr);
-    fetch(`${env.VITE_SERVER_URL}/codes`, {
+    fetch(`https://mat-app-server.vercel.app/codes`, {
       method: "POST",
       body: jsonArr,
       headers: {

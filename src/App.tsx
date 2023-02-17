@@ -21,7 +21,7 @@ function App() {
   const [data, setData] = useState<CodeType[]>([]);
 
   const getData = async () => {
-    await fetch(`${env.VITE_SERVER_URL}/latest`)
+    await fetch(`https://mat-app-server.vercel.app/latest`)
       .then((response) => response.json())
       .then((res) => setData([...res]));
   };
