@@ -40,17 +40,14 @@ function App() {
   return (
     <div className="container">
       <AppBar />
-      {loading ? (
-        <>
+      <div className="App">
+        <UploadButton setData={setData} />
+        {loading ? (
           <h1>Loading Data ...</h1>
-        </>
-      ) : (
-        <div className="App">
-          <UploadButton setData={setData} />
-
+        ) : (
           <div className="tableWrapper">{data?.length ? <CodesTable data={data} /> : <h1>No Data loaded</h1>}</div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
