@@ -21,5 +21,11 @@
 }
 
 .tableWrapper {
-  width: 95vw;
+  width: 90vw;
+}
+
+@media only screen and (max-width: 600px) {
+  .tableWrapper {
+    width: 98vw;
+  }
 }

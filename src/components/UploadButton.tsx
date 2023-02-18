@@ -5,7 +5,13 @@ import ClearIcon from "@mui/icons-material/Clear";
 import readFile from "read-excel-file";
 import { CodeType, env } from "./../App";
 
-const UploadButton = ({ setData }: { setData: any }) => {
+const UploadButton = ({
+  setData,
+  setLoading,
+}: {
+  setData: (data: CodeType[]) => void;
+  setLoading: (type: boolean) => void;
+}) => {
   const [fileName, setFileName] = useState("");
   const [codesArr, setCodesArr] = useState<string[]>([]);
   const jobData = useRef<Array<{ code: string; description: string; comments: string }>>([]);
@@ -36,11 +42,13 @@ const UploadButton = ({ setData }: { setData: any }) => {
       return { ...serverCode, description: description ? description : serverCode.description, comments };
     });
 
+    setLoading(false);
     setData(data);
   };
 
   useEffect(() => {
     if (codesArr.length) {
+      setLoading(true);
       dataFetch();
     }
   }, [codesArr.length]);
@@ -49,6 +57,7 @@ const UploadButton = ({ setData }: { setData: any }) => {
     const file = e.target?.files[0];
 
     if (file) {
+      setLoading(true);
       let arr: string[] = [];
       const data = await readFile(file);
 

@@ -16,23 +16,20 @@ function createData(name: string, calories: number, fat: number, carbs: number, 
 }
 
 const updateMaterials = async (id: string, materials: [string]) => {
-  await fetch(`${env.VITE_SERVER_URL}/codes`, {
+  const response = await fetch(`${env.VITE_SERVER_URL}/code`, {
     method: "POST",
     body: JSON.stringify({ param: { id, materials } }),
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
     },
-  })
-    .then((response) => response.json())
-    .catch((error) => {
-      console.error(error);
-    });
+  });
+  const data = response.json();
 };
 
 export default function BasicTable({ data }: { data: any }) {
-  const onUpdateMaterialsList = (e: any, id?: string) => {
-    if (id && e.target.value) {
+  const onUpdateMaterialsList = (e: any, id?: string, isEmpty?: false) => {
+    if (id) {
       updateMaterials(id, e.target.value);
     }
   };

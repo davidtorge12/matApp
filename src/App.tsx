@@ -41,7 +41,7 @@ function App() {
     <div className="container">
       <AppBar />
       <div className="App">
-        <UploadButton setData={setData} />
+        <UploadButton setData={setData} setLoading={setLoading} />
         {loading ? (
           <h1>Loading Data ...</h1>
         ) : (
