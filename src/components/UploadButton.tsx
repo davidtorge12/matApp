@@ -3,30 +3,40 @@ import { InputHTMLAttributes, useEffect, useRef, useState } from "react";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import ClearIcon from "@mui/icons-material/Clear";
 import readFile from "read-excel-file";
-import { env } from "./../App";
+import { CodeType, env } from "./../App";
 
 const UploadButton = ({ setData }: { setData: any }) => {
   const [fileName, setFileName] = useState("");
-  const [codesArr, setCodesArr] = useState<number[]>([]);
+  const [codesArr, setCodesArr] = useState<string[]>([]);
+  const jobData = useRef<Array<{ code: string; description: string; comments: string }>>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const jobType = useRef(1);
 
   const dataFetch = async () => {
     const jsonArr = JSON.stringify(codesArr);
-    fetch(`https://mat-app-server.vercel.app/codes`, {
+    const response = await fetch(`${env.VITE_SERVER_URL}/codes`, {
       method: "POST",
       body: jsonArr,
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        setData(data);
-      })
-      .catch((error) => {
-        console.error(error);
+    });
+    let data = await response.json();
+
+    data = data.map((serverCode: CodeType) => {
+      let comments = "";
+      let description = "";
+      jobData.current.forEach((jobRow) => {
+        if (jobRow.code === serverCode.code) {
+          comments = jobRow.comments;
+          description = jobRow.description;
+        }
       });
+      return { ...serverCode, description: description ? description : serverCode.description, comments };
+    });
+
+    setData(data);
   };
 
   useEffect(() => {
@@ -39,11 +49,33 @@ const UploadButton = ({ setData }: { setData: any }) => {
     const file = e.target?.files[0];
 
     if (file) {
-      let arr: number[] = [];
+      let arr: string[] = [];
       const data = await readFile(file);
+
       data.map((row) => {
+        if (row[0] === "Code") {
+          if (row[7].toString().toLowerCase() === "Specification Comments".toLowerCase()) {
+            jobType.current = 2;
+          } else {
+            jobType.current = 1;
+          }
+        }
+
         if (row[0] && parseInt(row[0].toString())) {
-          arr.push(parseInt(row[0].toString()));
+          const code = row[0].toString();
+          arr.push(code);
+
+          if (jobType.current === 1) {
+            jobData.current = [
+              ...jobData.current,
+              { code, description: row[1]?.toString() || "", comments: row[8]?.toString() || "" },
+            ];
+          } else {
+            jobData.current = [
+              ...jobData.current,
+              { code, description: row[1]?.toString() || "", comments: row[7]?.toString() || "" },
+            ];
+          }
         }
       });
 

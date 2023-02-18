@@ -15,31 +15,42 @@ export type CodeType = {
   unit?: string;
   price?: string;
   materials: string;
+  comments?: string;
 };
 
 function App() {
   const [data, setData] = useState<CodeType[]>([]);
 
+  const [loading, setLoading] = useState<boolean>(false);
+
   const getData = async () => {
-    await fetch(`https://mat-app-server.vercel.app/latest`)
-      .then((response) => response.json())
-      .then((res) => setData([...res]));
+    setLoading(true);
+    const response = await fetch(`${env.VITE_SERVER_URL}/latest`);
+    const res = await response.json();
+    setData([...res]);
+    setLoading(false);
   };
 
   useEffect(() => {
     if (!data?.length) {
       getData();
     }
-  }, []);
+  }, [data]);
 
   return (
     <div className="container">
       <AppBar />
-      <div className="App">
-        <UploadButton setData={setData} />
+      {loading ? (
+        <>
+          <h1>Loading Data ...</h1>
+        </>
+      ) : (
+        <div className="App">
+          <UploadButton setData={setData} />
 
-        <div className="tableWrapper">{data?.length ? <CodesTable data={data} /> : <h1>No Data loaded</h1>}</div>
-      </div>
+          <div className="tableWrapper">{data?.length ? <CodesTable data={data} /> : <h1>No Data loaded</h1>}</div>
+        </div>
+      )}
     </div>
   );
 }

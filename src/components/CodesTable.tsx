@@ -7,7 +7,7 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import Textarea from "@mui/joy/Textarea";
-import { CodeType } from "./../App";
+import { CodeType, env } from "./../App";
 import { IconButton, Button } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 
@@ -16,7 +16,7 @@ function createData(name: string, calories: number, fat: number, carbs: number, 
 }
 
 const updateMaterials = async (id: string, materials: [string]) => {
-  fetch("https://mat-app-server.vercel.app/code", {
+  await fetch(`${env.VITE_SERVER_URL}/codes`, {
     method: "POST",
     body: JSON.stringify({ param: { id, materials } }),
     headers: {
@@ -32,7 +32,6 @@ const updateMaterials = async (id: string, materials: [string]) => {
 
 export default function BasicTable({ data }: { data: any }) {
   const onUpdateMaterialsList = (e: any, id?: string) => {
-    console.log("face blur la click");
     if (id && e.target.value) {
       updateMaterials(id, e.target.value);
     }
@@ -55,7 +54,7 @@ export default function BasicTable({ data }: { data: any }) {
   return (
     <>
       <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 300 }} aria-label="simple table">
+        <Table sx={{ minWidth: 200 }} aria-label="simple table">
           <TableHead>
             <TableRow>
               <TableCell align="left">
@@ -80,13 +79,17 @@ export default function BasicTable({ data }: { data: any }) {
           <TableBody>
             {data.map((row: CodeType) => (
               <TableRow key={row._id} sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
-                <TableCell align="left">{row.code}</TableCell>
+                <TableCell sx={{ fontWeight: "700" }} align="left">
+                  {row.code}
+                </TableCell>
                 {width > 750 ? (
                   <TableCell sx={{ fontSize: "12px" }} component="th" scope="row">
                     <span>{row.description}</span>
                   </TableCell>
                 ) : null}
-                <TableCell align="center">{"comment"}</TableCell>
+                <TableCell align="center" sx={{ color: "#860000" }}>
+                  {row.comments}
+                </TableCell>
                 <TableCell align="right" sx={{ position: "relative" }}>
                   <Textarea
                     onBlur={(e) => onUpdateMaterialsList(e, row._id)}
