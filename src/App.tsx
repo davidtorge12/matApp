@@ -45,7 +45,9 @@ function App() {
         {loading ? (
           <h1>Loading Data ...</h1>
         ) : (
-          <div className="tableWrapper">{data?.length ? <CodesTable data={data} /> : <h1>No Data loaded</h1>}</div>
+          <div className="tableWrapper">
+            {data?.length ? <CodesTable data={data} setData={setData} /> : <h1>No Data loaded</h1>}
+          </div>
         )}
       </div>
     </div>

@@ -24,13 +24,14 @@ const updateMaterials = async (id: string, materials: [string]) => {
       "Content-Type": "application/json",
     },
   });
-  const data = response.json();
+  response.json();
 };
 
-export default function BasicTable({ data }: { data: any }) {
+export default function BasicTable({ data, setData }: { data: CodeType[]; setData: (data: CodeType[]) => void }) {
   const onUpdateMaterialsList = (e: any, id?: string, isEmpty?: false) => {
+    const value = e.target.value;
     if (id) {
-      updateMaterials(id, e.target.value);
+      updateMaterials(id, value);
     }
   };
 
@@ -74,7 +75,7 @@ export default function BasicTable({ data }: { data: any }) {
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.map((row: CodeType) => (
+            {data.map((row: CodeType, i, arr) => (
               <TableRow key={row._id} sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
                 <TableCell sx={{ fontWeight: "700" }} align="left">
                   {row.code}
@@ -89,7 +90,17 @@ export default function BasicTable({ data }: { data: any }) {
                 </TableCell>
                 <TableCell align="right" sx={{ position: "relative" }}>
                   <Textarea
-                    onBlur={(e) => onUpdateMaterialsList(e, row._id)}
+                    onBlur={(e) => {
+                      setData([
+                        ...data.map((d: CodeType) => {
+                          if (d._id === row._id) {
+                            return { ...d, materials: e.target.value };
+                          }
+                          return d;
+                        }),
+                      ]);
+                      onUpdateMaterialsList(e, row._id);
+                    }}
                     sx={{ fontSize: "12px" }}
                     minRows={5}
                     size="sm"
