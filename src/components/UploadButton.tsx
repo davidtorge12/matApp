@@ -52,7 +52,7 @@ const UploadButton = ({ setData }: { setData: any }) => {
       let arr: string[] = [];
       const data = await readFile(file);
 
-      data.map((row) => {
+      data.map((row, i, array) => {
         if (row[0] === "Code") {
           if (row[7].toString().toLowerCase() === "Specification Comments".toLowerCase()) {
             jobType.current = 2;
@@ -76,6 +76,19 @@ const UploadButton = ({ setData }: { setData: any }) => {
               { code, description: row[1]?.toString() || "", comments: row[7]?.toString() || "" },
             ];
           }
+        } else if (
+          jobType.current === 1 &&
+          row[1] &&
+          row[1]?.toString() === row[1]?.toString().toUpperCase() &&
+          array[i - 1] &&
+          array[i - 1][0] &&
+          parseInt(array[i - 1][0].toString())
+        ) {
+          const code = array[i - 1][0].toString();
+          const description = array[i - 1][1].toString();
+          const comments = row[1].toString();
+
+          jobData.current = [...jobData.current, { code, description, comments }];
         }
       });
 
