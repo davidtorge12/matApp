@@ -9,7 +9,7 @@ import Paper from "@mui/material/Paper";
 import Textarea from "@mui/joy/Textarea";
 import { CodeType, env } from "./../App";
 import { IconButton, Button } from "@mui/material";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import CopyButton from "./CopyButton";
 
 function createData(name: string, calories: number, fat: number, carbs: number, protein: number) {
   return { name, calories, fat, carbs, protein };
@@ -103,21 +103,14 @@ export default function BasicTable({ data, setData }: { data: CodeType[]; setDat
                     }}
                     sx={{ fontSize: "12px" }}
                     minRows={5}
+                    maxRows={10}
                     size="sm"
                     placeholder="add materials"
                     defaultValue={row.materials}
                   />
                 </TableCell>
                 <TableCell align="center">
-                  <IconButton
-                    size="small"
-                    color="primary"
-                    onClick={() => {
-                      navigator.clipboard.writeText(row.materials);
-                    }}
-                  >
-                    <ContentCopyIcon />
-                  </IconButton>
+                  <CopyButton materials={row.materials} />
                 </TableCell>
               </TableRow>
             ))}
