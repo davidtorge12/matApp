@@ -41,7 +41,6 @@ function App() {
           .map((d) => d.materials)
           .filter((material) => material !== "")
           .join("\n")
-          .slice(0, -2)
       );
     }
   }, [data]);
