@@ -28,7 +28,7 @@ const updateMaterials = async (id: string, materials: [string]) => {
 };
 
 export default function BasicTable({ data, setData }: { data: CodeType[]; setData: (data: CodeType[]) => void }) {
-  const onUpdateMaterialsList = (e: any, id?: string, isEmpty?: false) => {
+  const onUpdateMaterialsList = (e: any, id?: string) => {
     const value = e.target.value;
     if (id) {
       updateMaterials(id, value);
@@ -76,7 +76,7 @@ export default function BasicTable({ data, setData }: { data: CodeType[]; setDat
           </TableHead>
           <TableBody>
             {data.map((row: CodeType, i, arr) => (
-              <TableRow key={row._id} sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
+              <TableRow key={`${i}_${row._id}`} sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
                 <TableCell sx={{ fontWeight: "700" }} align="left">
                   {row.code}
                 </TableCell>

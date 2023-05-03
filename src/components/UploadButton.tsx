@@ -8,9 +8,13 @@ import { CodeType, env } from "./../App";
 const UploadButton = ({
   setData,
   setLoading,
+  allMaterials,
+  setAllMaterials,
 }: {
   setData: (data: CodeType[]) => void;
   setLoading: (type: boolean) => void;
+  allMaterials: string;
+  setAllMaterials: (type: string) => void;
 }) => {
   const [fileName, setFileName] = useState("");
   const [codesArr, setCodesArr] = useState<string[]>([]);
@@ -19,10 +23,11 @@ const UploadButton = ({
   const jobType = useRef(1);
 
   const dataFetch = async () => {
-    const jsonArr = JSON.stringify(codesArr);
+    const codesObj = JSON.stringify(jobData.current);
+
     const response = await fetch(`${env.VITE_SERVER_URL}/codes`, {
       method: "POST",
-      body: jsonArr,
+      body: codesObj,
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
@@ -43,6 +48,9 @@ const UploadButton = ({
     });
 
     setLoading(false);
+
+    // data = [...data.sort((a: CodeType, b: CodeType) => codesArr.indexOf(a.code) - codesArr.indexOf(b.code))];
+
     setData(data);
   };
 
@@ -59,10 +67,20 @@ const UploadButton = ({
     if (file) {
       setLoading(true);
       let arr: string[] = [];
+
       const data = await readFile(file);
 
+      let address = "";
+      let after = false;
       data.map((row, i, array) => {
+        // set address
+        if (!address && row[0] && row[2] && row[0].toString().toLowerCase().includes("address")) {
+          address = row[2].toString();
+        }
+
+        // decide job type
         if (row[0] === "Code") {
+          after = true;
           if (row[7].toString().toLowerCase() === "Specification Comments".toLowerCase()) {
             jobType.current = 2;
           } else {
@@ -70,39 +88,45 @@ const UploadButton = ({
           }
         }
 
-        if (row[0] && parseInt(row[0].toString())) {
-          const code = row[0].toString();
-          arr.push(code);
+        if (after && row[0] !== "Code") {
+          const reg = new RegExp(/\w/gi);
 
-          if (jobType.current === 1) {
-            jobData.current = [
-              ...jobData.current,
-              { code, description: row[1]?.toString() || "", comments: row[8]?.toString() || "" },
-            ];
-          } else {
-            jobData.current = [
-              ...jobData.current,
-              { code, description: row[1]?.toString() || "", comments: row[7]?.toString() || "" },
-            ];
+          if (row[0] && reg.test(row[0].toString())) {
+            const code = row[0].toString();
+            arr.push(code);
+
+            if (jobType.current === 1) {
+              jobData.current = [
+                ...jobData.current,
+                { code, description: row[1]?.toString() || "", comments: row[8]?.toString() || "" },
+              ];
+            } else {
+              jobData.current = [
+                ...jobData.current,
+                { code, description: row[1]?.toString() || "", comments: row[7]?.toString() || "" },
+              ];
+            }
+          } else if (
+            jobType.current === 1 &&
+            row[1] &&
+            row[1]?.toString() === row[1]?.toString().toUpperCase() &&
+            array[i - 1] &&
+            array[i - 1][0] &&
+            parseInt(array[i - 1][0].toString())
+          ) {
+            const code = array[i - 1][0].toString();
+            const description = array[i - 1][1].toString();
+            const comments = row[1].toString();
+
+            jobData.current = [...jobData.current, { code, description, comments }];
           }
-        } else if (
-          jobType.current === 1 &&
-          row[1] &&
-          row[1]?.toString() === row[1]?.toString().toUpperCase() &&
-          array[i - 1] &&
-          array[i - 1][0] &&
-          parseInt(array[i - 1][0].toString())
-        ) {
-          const code = array[i - 1][0].toString();
-          const description = array[i - 1][1].toString();
-          const comments = row[1].toString();
-
-          jobData.current = [...jobData.current, { code, description, comments }];
         }
       });
 
       setFileName(file.name);
       setCodesArr([...arr]);
+
+      setAllMaterials(`Address: \n${address}\n---\n`);
     }
   };
 
@@ -110,6 +134,12 @@ const UploadButton = ({
     setFileName("");
     setCodesArr([]);
     setData([]);
+    jobType.current = 1;
+    jobData.current = [];
+
+    if (allMaterials.includes("Address: \n")) {
+      setAllMaterials(allMaterials.split("---\n")[1]);
+    }
   };
 
   return (

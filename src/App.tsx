@@ -36,11 +36,16 @@ function App() {
 
   useEffect(() => {
     if (data.length) {
+      let address = "";
+      if (allMaterials.includes("Address: \n")) {
+        address = allMaterials.split("---\n")[0] + "---\n";
+      }
       setAllMaterials(
-        data
-          .map((d) => d.materials)
-          .filter((material) => material !== "")
-          .join("\n")
+        address +
+          data
+            .map((d) => d.materials.trim())
+            .filter((material) => material !== "")
+            .join("\n")
       );
     }
   }, [data]);
@@ -55,7 +60,12 @@ function App() {
     <div className="container">
       <AppBar />
       <div className="App">
-        <UploadButton setData={setData} setLoading={setLoading} />
+        <UploadButton
+          setData={setData}
+          setLoading={setLoading}
+          allMaterials={allMaterials}
+          setAllMaterials={setAllMaterials}
+        />
         {loading ? (
           <h1>Loading Data ...</h1>
         ) : data?.length ? (
