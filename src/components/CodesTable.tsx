@@ -27,27 +27,21 @@ const updateMaterials = async (id: string, materials: [string]) => {
   response.json();
 };
 
-export default function BasicTable({ data, setData }: { data: CodeType[]; setData: (data: CodeType[]) => void }) {
+export default function BasicTable({
+  data,
+  setData,
+  width,
+}: {
+  data: CodeType[];
+  setData: (data: CodeType[]) => void;
+  width: number;
+}) {
   const onUpdateMaterialsList = (e: any, id?: string) => {
     const value = e.target.value;
     if (id) {
       updateMaterials(id, value);
     }
   };
-
-  const [width, setWidth] = useState(window.innerWidth);
-
-  const listener = () => {
-    setWidth(window.innerWidth);
-  };
-
-  useEffect(() => {
-    window.addEventListener("resize", listener);
-
-    return () => {
-      window.removeEventListener("resize", listener);
-    };
-  }, []);
 
   return (
     <>

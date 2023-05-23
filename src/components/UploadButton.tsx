@@ -1,5 +1,5 @@
 import { Button, IconButton } from "@mui/material";
-import { InputHTMLAttributes, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import ClearIcon from "@mui/icons-material/Clear";
 import readFile from "read-excel-file";
@@ -8,13 +8,13 @@ import { CodeType, env } from "./../App";
 const UploadButton = ({
   setData,
   setLoading,
-  allMaterials,
-  setAllMaterials,
+  address,
+  setAddress,
 }: {
   setData: (data: CodeType[]) => void;
   setLoading: (type: boolean) => void;
-  allMaterials: string;
-  setAllMaterials: (type: string) => void;
+  address: string;
+  setAddress: (adress: string) => void;
 }) => {
   const [fileName, setFileName] = useState("");
   const [codesArr, setCodesArr] = useState<string[]>([]);
@@ -48,8 +48,6 @@ const UploadButton = ({
     });
 
     setLoading(false);
-
-    // data = [...data.sort((a: CodeType, b: CodeType) => codesArr.indexOf(a.code) - codesArr.indexOf(b.code))];
 
     setData(data);
   };
@@ -126,7 +124,7 @@ const UploadButton = ({
       setFileName(file.name);
       setCodesArr([...arr]);
 
-      setAllMaterials(`Address: \n${address}\n---\n`);
+      setAddress(`Address: \n${address}\n\n`);
     }
   };
 
@@ -137,9 +135,7 @@ const UploadButton = ({
     jobType.current = 1;
     jobData.current = [];
 
-    if (allMaterials.includes("Address: \n")) {
-      setAllMaterials(allMaterials.split("---\n")[1]);
-    }
+    setAddress("");
   };
 
   return (
