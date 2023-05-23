@@ -104,7 +104,7 @@ export default function BasicTable({
                   />
                 </TableCell>
                 <TableCell align="center">
-                  <CopyButton materials={row.materials} />
+                  <CopyButton str={row.materials} />
                 </TableCell>
               </TableRow>
             ))}

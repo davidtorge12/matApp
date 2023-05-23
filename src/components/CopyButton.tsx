@@ -10,7 +10,7 @@ function CopyButton({
   str,
   txt,
 }: {
-  materials: string[];
+  materials?: string[];
   prices?: number[];
   total?: number;
   address?: string;
@@ -31,17 +31,19 @@ function CopyButton({
           allMaterialsList += address;
         }
 
-        if (prices) {
-          materials.map((m, i) => {
-            allMaterialsList += m.padEnd(45, ".") + " " + prices[i] + " £" + "\n";
-          });
-          if (total) {
-            allMaterialsList += `\nTotal: ${total} £`;
+        if (materials) {
+          if (prices) {
+            materials.map((m, i) => {
+              allMaterialsList += m.padEnd(45, ".") + " " + prices[i] + " £" + "\n";
+            });
+            if (total) {
+              allMaterialsList += `\nTotal: ${total} £`;
+            }
+          } else {
+            materials.map((m) => {
+              allMaterialsList += m + "\n";
+            });
           }
-        } else {
-          materials.map((m) => {
-            allMaterialsList += m + "\n";
-          });
         }
 
         navigator.clipboard.writeText(allMaterialsList);

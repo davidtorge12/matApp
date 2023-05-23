@@ -5,7 +5,6 @@ import UploadButton from "./components/UploadButton";
 import CodesTable from "./components/CodesTable";
 import { Input, Textarea } from "@mui/joy";
 import CopyButton from "./components/CopyButton";
-import MaterialsList from "./components/MaterialsList";
 import AddIcon from "@mui/icons-material/Add";
 import ClearIcon from "@mui/icons-material/Clear";
 import { IconButton } from "@mui/material";
