@@ -151,7 +151,7 @@ function App() {
                       gap: "3px",
                       marginBottom: "15px",
                       flexDirection: "column",
-                      width: "500px",
+                      width: width < 700 ? `${width - 50}px` : "700px",
                     }}
                   >
                     <h5>{address}</h5>
@@ -169,7 +169,7 @@ function App() {
                           <input
                             value={material}
                             style={{ width: "60%", borderTop: "none", borderLeft: "none", borderRight: "none" }}
-                            onBlur={(e) => {
+                            onChange={(e) => {
                               setAllMaterials((prev) =>
                                 prev.map((m: MaterialsType) => (m.id === id ? { ...m, material: e.target.value } : m))
                               );
@@ -180,6 +180,7 @@ function App() {
                             value={price}
                             disabled={!material}
                             type="number"
+                            min={0}
                             step={0.1}
                             style={{
                               textAlign: "right",
@@ -195,18 +196,18 @@ function App() {
                                 })
                               );
                             }}
-                            onBlur={(e) => {
-                              setAllMaterials((prev) => [
-                                ...prev.map((m: MaterialsType) => {
-                                  let quantity = 0;
-                                  if (m.id === id && parseFloat(m.material.trim()[0])) {
-                                    quantity = parseFloat(m.material.trim()[0]);
-                                  }
+                            // onBlur={(e) => {
+                            //   setAllMaterials((prev) => [
+                            //     ...prev.map((m: MaterialsType) => {
+                            //       let quantity = 0;
+                            //       if (m.id === id && parseFloat(m.material.trim()[0])) {
+                            //         quantity = parseFloat(m.material.trim()[0]);
+                            //       }
 
-                                  return m.id === id ? { ...m, price: quantity * parseFloat(e.target.value) } : m;
-                                }),
-                              ]);
-                            }}
+                            //       return m.id === id ? { ...m, price: quantity * parseFloat(e.target.value) } : m;
+                            //     }),
+                            //   ]);
+                            // }}
                             onFocus={(e) => e.target.select()}
                           />
                           <div style={{ fontSize: "12px", position: "relative", bottom: "-10px" }}>£</div>
