@@ -61,13 +61,13 @@ function App() {
     };
   }, []);
 
-  // const getData = async () => {
-  //   setLoading(true);
-  //   const response = await fetch(`${env.VITE_SERVER_URL}/latest`);
-  //   const res = await response.json();
-  //   setData([...res]);
-  //   setLoading(false);
-  // };
+  const getData = async () => {
+    setLoading(true);
+    const response = await fetch(`${env.VITE_SERVER_URL}/latest`);
+    const res = await response.json();
+    setData([...res]);
+    setLoading(false);
+  };
 
   const setPrice = async (material: string, price: string) => {
     const response = await fetch(`${env.VITE_SERVER_URL}/set-price`, {
@@ -167,11 +167,11 @@ function App() {
     setTotal(Math.round(newTotal * 100) / 100);
   }, allMaterials);
 
-  // useEffect(() => {
-  //   if (!data?.length) {
-  //     getData();
-  //   }
-  // }, [data]);
+  useEffect(() => {
+    if (!data?.length) {
+      getData();
+    }
+  }, [data]);
 
   return (
     <div className="container">
