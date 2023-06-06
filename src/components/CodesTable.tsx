@@ -8,12 +8,7 @@ import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import Textarea from "@mui/joy/Textarea";
 import { CodeType, env } from "./../App";
-import { IconButton, Button } from "@mui/material";
 import CopyButton from "./CopyButton";
-
-function createData(name: string, calories: number, fat: number, carbs: number, protein: number) {
-  return { name, calories, fat, carbs, protein };
-}
 
 const updateMaterials = async (id: string, materials: [string]) => {
   const response = await fetch(`${env.VITE_SERVER_URL}/code`, {
@@ -70,12 +65,19 @@ export default function BasicTable({
           </TableHead>
           <TableBody>
             {data.map((row: CodeType, i, arr) => (
-              <TableRow key={`${i}_${row._id}`} sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
+              <TableRow
+                key={`${i}_${row._id}`}
+                sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
+              >
                 <TableCell sx={{ fontWeight: "700" }} align="left">
                   {row.code}
                 </TableCell>
                 {width > 750 ? (
-                  <TableCell sx={{ fontSize: "12px" }} component="th" scope="row">
+                  <TableCell
+                    sx={{ fontSize: "12px" }}
+                    component="th"
+                    scope="row"
+                  >
                     <span>{row.description}</span>
                   </TableCell>
                 ) : null}

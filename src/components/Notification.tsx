@@ -1,9 +1,17 @@
 import { Alert } from "@mui/material";
 
-const Notification = () => {
+const Notification = ({ text, color }: { text?: string; color?: string }) => {
+  if (!text) {
+    return null;
+  }
+
   return (
-    <Alert sx={{ margin: "20px 0" }} severity="success" color="success">
-      This is a success alert — check it out!
+    <Alert
+      sx={{ margin: "20px 0", position: "fixed", top: 0 }}
+      severity="success"
+      color="success"
+    >
+      {text}
     </Alert>
   );
 };
