@@ -27,15 +27,24 @@ const UploadButton = ({
   const dataFetch = async () => {
     const codesObj = JSON.stringify(jobData.current);
 
-    const response = await fetch(`${env.VITE_SERVER_URL}/codes`, {
-      method: "POST",
-      body: codesObj,
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    });
-    let data = await response.json();
+    let data: any = [];
+
+    const chunkSize = 10;
+    for (let i = 0; i < jobData.current.length; i += chunkSize) {
+      const chunk = jobData.current.slice(i, i + chunkSize);
+
+      const response = await fetch(`${env.VITE_SERVER_URL}/codes`, {
+        method: "POST",
+        body: JSON.stringify(chunk),
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      });
+
+      data = [...data, await response.json()].flat();
+      console.log(data);
+    }
 
     data = data.map((serverCode: CodeType) => {
       let comments = "";
