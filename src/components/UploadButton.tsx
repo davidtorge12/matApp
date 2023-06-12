@@ -29,9 +29,9 @@ const UploadButton = ({
 
     const response = await fetch(`${env.VITE_SERVER_URL}/codes`, {
       method: "POST",
-      mode: "no-cors",
       body: codesObj,
       headers: {
+        Accept: "application/json",
         "Content-Type": "application/json",
       },
     });
