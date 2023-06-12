@@ -29,7 +29,7 @@ const UploadButton = ({
 
     let data: any = [];
 
-    const chunkSize = 10;
+    const chunkSize = 50;
     for (let i = 0; i < jobData.current.length; i += chunkSize) {
       const chunk = jobData.current.slice(i, i + chunkSize);
 
