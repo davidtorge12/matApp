@@ -18,7 +18,9 @@ const UploadButton = ({
 }) => {
   const [fileName, setFileName] = useState("");
   const [codesArr, setCodesArr] = useState<string[]>([]);
-  const jobData = useRef<Array<{ code: string; description: string; comments: string }>>([]);
+  const jobData = useRef<
+    Array<{ code: string; description: string; comments: string }>
+  >([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const jobType = useRef(1);
 
@@ -27,9 +29,9 @@ const UploadButton = ({
 
     const response = await fetch(`${env.VITE_SERVER_URL}/codes`, {
       method: "POST",
+      mode: "no-cors",
       body: codesObj,
       headers: {
-        Accept: "application/json",
         "Content-Type": "application/json",
       },
     });
@@ -44,7 +46,11 @@ const UploadButton = ({
           description = jobRow.description;
         }
       });
-      return { ...serverCode, description: description ? description : serverCode.description, comments };
+      return {
+        ...serverCode,
+        description: description ? description : serverCode.description,
+        comments,
+      };
     });
 
     setLoading(false);
@@ -72,14 +78,22 @@ const UploadButton = ({
       let after = false;
       data.map((row, i, array) => {
         // set address
-        if (!address && row[0] && row[2] && row[0].toString().toLowerCase().includes("address")) {
+        if (
+          !address &&
+          row[0] &&
+          row[2] &&
+          row[0].toString().toLowerCase().includes("address")
+        ) {
           address = row[2].toString();
         }
 
         // decide job type
         if (row[0] === "Code") {
           after = true;
-          if (row[7].toString().toLowerCase() === "Specification Comments".toLowerCase()) {
+          if (
+            row[7].toString().toLowerCase() ===
+            "Specification Comments".toLowerCase()
+          ) {
             jobType.current = 2;
           } else {
             jobType.current = 1;
@@ -96,12 +110,20 @@ const UploadButton = ({
             if (jobType.current === 1) {
               jobData.current = [
                 ...jobData.current,
-                { code, description: row[1]?.toString() || "", comments: row[8]?.toString() || "" },
+                {
+                  code,
+                  description: row[1]?.toString() || "",
+                  comments: row[8]?.toString() || "",
+                },
               ];
             } else {
               jobData.current = [
                 ...jobData.current,
-                { code, description: row[1]?.toString() || "", comments: row[7]?.toString() || "" },
+                {
+                  code,
+                  description: row[1]?.toString() || "",
+                  comments: row[7]?.toString() || "",
+                },
               ];
             }
           } else if (
@@ -116,7 +138,10 @@ const UploadButton = ({
             const description = array[i - 1][1].toString();
             const comments = row[1].toString();
 
-            jobData.current = [...jobData.current, { code, description, comments }];
+            jobData.current = [
+              ...jobData.current,
+              { code, description, comments },
+            ];
           }
         }
       });
@@ -143,15 +168,31 @@ const UploadButton = ({
       {fileName ? (
         <div className="inputFile">
           <h5>{fileName}</h5>
-          <IconButton onClick={onClearClick} aria-label="delete" size="small" sx={{ margin: "10px" }}>
+          <IconButton
+            onClick={onClearClick}
+            aria-label="delete"
+            size="small"
+            sx={{ margin: "10px" }}
+          >
             <ClearIcon />
           </IconButton>
         </div>
       ) : (
-        <Button variant="contained" size="large" color="primary" component="label">
+        <Button
+          variant="contained"
+          size="large"
+          color="primary"
+          component="label"
+        >
           Upload Job File
           <UploadFileIcon sx={{ marginLeft: "15px" }} />
-          <input ref={inputRef} onChange={onChange} hidden accept=".xlsx" type="file" />
+          <input
+            ref={inputRef}
+            onChange={onChange}
+            hidden
+            accept=".xlsx"
+            type="file"
+          />
         </Button>
       )}
     </div>
