@@ -96,8 +96,6 @@ function App() {
   const setAndParseMaterials = async () => {
     let matObj: any = {};
 
-    setLoading(true);
-
     const newMat = [
       ...data
         .map((d) => d.materials)
@@ -149,8 +147,6 @@ function App() {
     }
 
     setAllMaterials(finalArr);
-
-    setLoading(false);
   };
 
   useEffect(() => {
