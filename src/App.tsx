@@ -388,6 +388,7 @@ function App() {
                         <CopyButton
                           address={address}
                           materials={[...allMaterials.map((m) => m.material)]}
+                          units={[...allMaterials.map((m) => m.units)]}
                           txt="list"
                         />
 

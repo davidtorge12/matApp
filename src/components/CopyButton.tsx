@@ -10,9 +10,11 @@ function CopyButton({
   address,
   str,
   txt,
+  units,
 }: {
   materials?: string[];
   prices?: number[];
+  units?: number[];
   total?: number;
   address?: string;
   str?: string;
@@ -53,8 +55,12 @@ function CopyButton({
                 allMaterialsList += `\nTotal: ${total} £ + "\n"`;
               }
             } else {
-              materials.map((m) => {
-                allMaterialsList += m + "\n";
+              materials.map((m, i) => {
+                if (units && units[i]) {
+                  allMaterialsList += `${units[i]}x  ${m}` + "\n";
+                } else {
+                  allMaterialsList += m + "\n";
+                }
               });
             }
           }
