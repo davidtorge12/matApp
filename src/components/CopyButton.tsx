@@ -33,6 +33,7 @@ function CopyButton({
   return (
     <>
       <IconButton
+        disabled={time}
         size="small"
         color="primary"
         onClick={() => {
@@ -48,11 +49,17 @@ function CopyButton({
           if (materials) {
             if (prices) {
               materials.map((m, i) => {
-                allMaterialsList +=
-                  m.padEnd(45, ".") + " " + prices[i] + " £" + "\n";
+                if (units && units[i]) {
+                  allMaterialsList += `${units[i]}x ${m.padEnd(45, ".")} ${
+                    prices[i]
+                  } £ \n`;
+                } else {
+                  allMaterialsList +=
+                    m.padEnd(45, ".") + " " + prices[i] + " £" + "\n";
+                }
               });
               if (total) {
-                allMaterialsList += `\nTotal: ${total} £ + "\n"`;
+                allMaterialsList += `\nTotal: ${total} £ \n`;
               }
             } else {
               materials.map((m, i) => {

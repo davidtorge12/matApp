@@ -7,7 +7,13 @@ const Notification = ({ text, color }: { text?: string; color?: string }) => {
 
   return (
     <Alert
-      sx={{ margin: "20px 0", position: "fixed", top: 0 }}
+      sx={{
+        margin: "20px 0",
+        position: "fixed",
+        top: 0,
+        left: "50%",
+        transform: "translateX(-50%)",
+      }}
       severity="success"
       color="success"
     >

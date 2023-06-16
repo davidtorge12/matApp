@@ -396,6 +396,7 @@ function App() {
                           address={address}
                           materials={[...allMaterials.map((m) => m.material)]}
                           prices={[...allMaterials.map((m) => m.price)]}
+                          units={[...allMaterials.map((m) => m.units)]}
                           total={total}
                           txt="with price"
                         />
