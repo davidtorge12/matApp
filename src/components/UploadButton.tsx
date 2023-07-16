@@ -168,9 +168,6 @@ const UploadButton = ({
         }
       });
 
-      console.log(jobType);
-      console.log(file.name, arr, address);
-
       setFileName(file.name);
       setCodesArr([...arr]);
 
