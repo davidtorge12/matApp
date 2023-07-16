@@ -83,17 +83,18 @@ const UploadButton = ({
 
       const data = await readFile(file);
 
+      console.log(data);
+
       let address = "";
       let after = false;
       data.map((row, i, array) => {
         // set address
-        if (
-          !address &&
-          row[0] &&
-          row[2] &&
-          row[0].toString().toLowerCase().includes("address")
-        ) {
-          address = row[2].toString();
+        if (!address && row[0].toString().toLowerCase().includes("address")) {
+          if (row[0] && row[2]) {
+            address = row[2].toString();
+          } else if (row[0] && !row[2]) {
+            address = row[1].toString();
+          }
         }
 
         // decide job type
@@ -107,6 +108,9 @@ const UploadButton = ({
           } else {
             jobType.current = 1;
           }
+        } else if (row[0] === "SoR Code") {
+          after = true;
+          jobType.current = 3;
         }
 
         if (after && row[0] !== "Code") {
@@ -125,13 +129,22 @@ const UploadButton = ({
                   comments: row[8]?.toString() || "",
                 },
               ];
-            } else {
+            } else if (jobType.current === 2) {
               jobData.current = [
                 ...jobData.current,
                 {
                   code,
                   description: row[1]?.toString() || "",
                   comments: row[7]?.toString() || "",
+                },
+              ];
+            } else if (jobType.current === 3 && row[1]) {
+              jobData.current = [
+                ...jobData.current,
+                {
+                  code,
+                  description: row[1]?.toString() || "",
+                  comments: row[11]?.toString() || "",
                 },
               ];
             }
@@ -154,6 +167,9 @@ const UploadButton = ({
           }
         }
       });
+
+      console.log(jobType);
+      console.log(file.name, arr, address);
 
       setFileName(file.name);
       setCodesArr([...arr]);
