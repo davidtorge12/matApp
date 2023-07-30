@@ -89,7 +89,11 @@ const UploadButton = ({
       let after = false;
       data.map((row, i, array) => {
         // set address
-        if (!address && row[0].toString().toLowerCase().includes("address")) {
+        if (
+          !address &&
+          row[0] &&
+          row[0].toString().toLowerCase().includes("address")
+        ) {
           if (row[0] && row[2]) {
             address = row[2].toString();
           } else if (row[0] && !row[2]) {
