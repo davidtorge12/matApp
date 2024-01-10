@@ -19,7 +19,7 @@ const updateMaterials = async (id: string, materials: [string]) => {
       "Content-Type": "application/json",
     },
   });
-  response.json();
+  await response.json();
 };
 
 export default function BasicTable({

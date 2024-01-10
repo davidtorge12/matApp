@@ -11,6 +11,7 @@ function CopyButton({
   str,
   txt,
   units,
+  key,
 }: {
   materials?: string[];
   prices?: number[];
@@ -19,6 +20,7 @@ function CopyButton({
   address?: string;
   str?: string;
   txt?: string;
+  key?: string;
 }) {
   const [time, setTime] = useState(false);
 
@@ -31,14 +33,15 @@ function CopyButton({
   });
 
   return (
-    <>
+    <div key={key}>
       <IconButton
         disabled={time}
         size="small"
         color="primary"
         onClick={() => {
           if (str) {
-            navigator.clipboard.writeText(str);
+            setTime(true);
+            return navigator.clipboard.writeText(str);
           }
 
           let allMaterialsList = "";
@@ -80,7 +83,7 @@ function CopyButton({
         {txt ? <p>{txt}</p> : null}
       </IconButton>
       {time && <Notification text="Text successful copied" />}
-    </>
+    </div>
   );
 }
 

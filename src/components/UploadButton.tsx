@@ -43,7 +43,6 @@ const UploadButton = ({
       });
 
       data = [...data, await response.json()].flat();
-      console.log(data);
     }
 
     data = data.map((serverCode: CodeType) => {

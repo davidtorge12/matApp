@@ -9,8 +9,27 @@ import ClearIcon from "@mui/icons-material/Clear";
 import { IconButton, debounce } from "@mui/material";
 import { v4 as uuidv4 } from "uuid";
 import Notification from "./components/Notification";
+import BasicTabs from "./components/Tabs";
+import { Textarea } from "@mui/joy";
 
 export const env = import.meta.env;
+
+const updateVo = async (voArr: VOType[]) => {
+  const response = await fetch(`${env.VITE_SERVER_URL}/vo`, {
+    method: "POST",
+    body: JSON.stringify(voArr),
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+  });
+  await response.json();
+};
+
+type VOType = {
+  code: string;
+  info: string;
+};
 
 export type CodeType = {
   _id: string;
@@ -22,6 +41,7 @@ export type CodeType = {
   price?: string;
   materials: string;
   comments?: string;
+  info?: string;
 };
 
 export type MaterialsType = {
@@ -45,6 +65,8 @@ function App() {
   const [loading, setLoading] = useState<boolean>(false);
 
   const [width, setWidth] = useState(window.innerWidth);
+
+  const [vo, setVo] = useState<string>("");
 
   const listener = useCallback(
     debounce(() => {
@@ -70,7 +92,7 @@ function App() {
   };
 
   const setPrice = async (material: string, price: string) => {
-    const response = await fetch(`${env.VITE_SERVER_URL}/set-price`, {
+    await fetch(`${env.VITE_SERVER_URL}/set-price`, {
       method: "POST",
       body: JSON.stringify({ material, price }),
       headers: {
@@ -152,6 +174,14 @@ function App() {
   useEffect(() => {
     if (data.length) {
       setAndParseMaterials();
+
+      setVo(
+        data
+          .map((d) => {
+            return `${d.code} x ${d.info}\n`;
+          })
+          .join("")
+      );
     }
   }, [data]);
 
@@ -169,50 +199,47 @@ function App() {
     }
   }, [data]);
 
-  return (
-    <div className="container">
-      <AppBar />
+  const tab1 = (
+    <div className="App">
+      <UploadButton
+        setData={setData}
+        setLoading={setLoading}
+        address={address}
+        setAddress={setAddress}
+      />
+      {loading ? (
+        <h1>Loading Data ...</h1>
+      ) : data?.length ? (
+        <>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "15px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                flexDirection: "row",
+                gap: "15px",
+              }}
+            >
+              <h4>All Materials list</h4>
+            </div>
 
-      <div className="App">
-        <UploadButton
-          setData={setData}
-          setLoading={setLoading}
-          address={address}
-          setAddress={setAddress}
-        />
-        {loading ? (
-          <h1>Loading Data ...</h1>
-        ) : data?.length ? (
-          <>
             <div
               style={{
                 display: "flex",
                 justifyContent: "center",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "15px",
+                gap: "3px",
+                marginBottom: "15px",
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  flexDirection: "row",
-                  gap: "15px",
-                }}
-              >
-                <h4>All Materials list</h4>
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  gap: "3px",
-                  marginBottom: "15px",
-                }}
-              >
-                {/* <Textarea
+              {/* <Textarea
                   placeholder="you don't have materials yet"
                   onChange={(e) => setAllMaterials(e.target.value)}
                   value={allMaterials}
@@ -227,102 +254,101 @@ function App() {
                   size="sm"
                 /> */}
 
-                {/* <MaterialsList materials={allMaterials} prices={allPrices} setPrices={setAllPrices} /> */}
+              {/* <MaterialsList materials={allMaterials} prices={allPrices} setPrices={setAllPrices} /> */}
 
-                {allMaterials.length ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      gap: "3px",
-                      marginBottom: "15px",
-                      flexDirection: "column",
-                      width: width < 700 ? `${width - 50}px` : "700px",
-                    }}
-                  >
-                    <h5>{address}</h5>
-                    {allMaterials.map(
-                      (
-                        { id, material, price, units }: MaterialsType,
-                        i: number
-                      ) => {
-                        return (
-                          <div
-                            key={i}
+              {allMaterials.length ? (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: "3px",
+                    marginBottom: "15px",
+                    flexDirection: "column",
+                    width: width < 700 ? `${width - 50}px` : "700px",
+                  }}
+                >
+                  <h5>{address}</h5>
+                  {allMaterials.map(
+                    (
+                      { id, material, price, units }: MaterialsType,
+                      i: number
+                    ) => {
+                      return (
+                        <div
+                          key={i}
+                          style={{
+                            display: "flex",
+                            justifyContent: "center",
+                            gap: "3px",
+                            marginBottom: "5px",
+                          }}
+                        >
+                          <input
+                            value={material}
                             style={{
-                              display: "flex",
-                              justifyContent: "center",
-                              gap: "3px",
-                              marginBottom: "5px",
+                              width: "60%",
+                              borderTop: "none",
+                              borderLeft: "none",
+                              borderRight: "none",
                             }}
-                          >
-                            <input
-                              value={material}
-                              style={{
-                                width: "60%",
-                                borderTop: "none",
-                                borderLeft: "none",
-                                borderRight: "none",
-                              }}
-                              onChange={(e) => {
-                                const mat = e.target.value;
-                                setAllMaterials((prev) =>
-                                  prev.map((m: MaterialsType) =>
-                                    m.id === id
-                                      ? {
-                                          ...m,
-                                          material: mat,
-                                          units:
-                                            mat[0] &&
-                                            parseInt(mat[0]) &&
-                                            mat[1] &&
-                                            mat[1].toLowerCase() === "x"
-                                              ? parseInt(mat[0])
-                                              : 1,
-                                        }
-                                      : m
-                                  )
-                                );
-                              }}
-                            />
+                            onChange={(e) => {
+                              const mat = e.target.value;
+                              setAllMaterials((prev) =>
+                                prev.map((m: MaterialsType) =>
+                                  m.id === id
+                                    ? {
+                                        ...m,
+                                        material: mat,
+                                        units:
+                                          mat[0] &&
+                                          parseInt(mat[0]) &&
+                                          mat[1] &&
+                                          mat[1].toLowerCase() === "x"
+                                            ? parseInt(mat[0])
+                                            : 1,
+                                      }
+                                    : m
+                                )
+                              );
+                            }}
+                          />
 
-                            <input
-                              value={price}
-                              disabled={!material}
-                              type="number"
-                              min={0}
-                              step={0.1}
-                              style={{
-                                textAlign: "right",
-                                width: "40%",
-                                borderTop: "none",
-                                borderLeft: "none",
-                                borderRight: "none",
-                              }}
-                              onChange={(e) => {
-                                setAllMaterials((prev) =>
-                                  prev.map((m: MaterialsType) => {
-                                    return m.id === id
-                                      ? {
-                                          ...m,
-                                          price: parseFloat(e.target.value),
-                                        }
-                                      : m;
-                                  })
-                                );
-                              }}
-                              onBlur={() => {
-                                const arrSplit =
-                                  material.split(REG_EXP_MATERIAL);
+                          <input
+                            value={price}
+                            disabled={!material}
+                            type="number"
+                            min={0}
+                            step={0.1}
+                            style={{
+                              textAlign: "right",
+                              width: "40%",
+                              borderTop: "none",
+                              borderLeft: "none",
+                              borderRight: "none",
+                            }}
+                            onChange={(e) => {
+                              setAllMaterials((prev) =>
+                                prev.map((m: MaterialsType) => {
+                                  return m.id === id
+                                    ? {
+                                        ...m,
+                                        price: parseFloat(e.target.value),
+                                      }
+                                    : m;
+                                })
+                              );
+                            }}
+                            onBlur={() => {
+                              const arrSplit = material.split(REG_EXP_MATERIAL);
 
-                                setPrice(
-                                  arrSplit.at(-1) as string,
-                                  price.toString()
-                                );
-                              }}
-                              onFocus={(e) => e.target.select()}
-                            />
-                            {/* <p
+                              setPrice(
+                                arrSplit.at(-1) as string,
+                                price.toString()
+                              );
+                            }}
+                            onFocus={(e) => e.target.select()}
+                          />
+                          {/* <p
                               style={{
                                 textAlign: "right",
                                 width: "20%",
@@ -334,93 +360,137 @@ function App() {
                             >
                               {units * price}
                             </p> */}
-                            <input
-                              value={`x ${units} =           ${
-                                price * units
-                              } £`}
-                              style={{
-                                textAlign: "right",
-                                width: "20%",
-                                borderTop: "none",
-                                borderLeft: "none",
-                                borderRight: "none",
-                              }}
-                            />
-                            <IconButton
-                              sx={{ width: "36px" }}
-                              onClick={() =>
-                                setAllMaterials([
-                                  ...allMaterials.filter((m) => m.id !== id),
-                                ])
-                              }
-                            >
-                              <ClearIcon color="primary" />
-                            </IconButton>
-                          </div>
-                        );
-                      }
-                    )}
-                    {
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-around",
-                          alignItems: "center",
-                        }}
-                      >
-                        <IconButton
-                          sx={{ width: "36px" }}
-                          onClick={() =>
-                            setAllMaterials([
-                              ...allMaterials,
-                              {
-                                id: uuidv4(),
-                                material: "",
-                                price: 0,
-                                units: 0,
-                              },
-                            ])
-                          }
-                        >
-                          <AddIcon color="primary" />
-                        </IconButton>
-
-                        <CopyButton
-                          address={address}
-                          materials={[...allMaterials.map((m) => m.material)]}
-                          units={[...allMaterials.map((m) => m.units)]}
-                          txt="list"
-                        />
-
-                        <CopyButton
-                          address={address}
-                          materials={[...allMaterials.map((m) => m.material)]}
-                          prices={[...allMaterials.map((m) => m.price)]}
-                          units={[...allMaterials.map((m) => m.units)]}
-                          total={total}
-                          txt="with price"
-                        />
-
-                        <h4>Total: {total}</h4>
-                      </div>
+                          <input
+                            value={`x ${units} =           ${price * units} £`}
+                            style={{
+                              textAlign: "right",
+                              width: "20%",
+                              borderTop: "none",
+                              borderLeft: "none",
+                              borderRight: "none",
+                            }}
+                          />
+                          <IconButton
+                            sx={{ width: "36px" }}
+                            onClick={() =>
+                              setAllMaterials([
+                                ...allMaterials.filter((m) => m.id !== id),
+                              ])
+                            }
+                          >
+                            <ClearIcon color="primary" />
+                          </IconButton>
+                        </div>
+                      );
                     }
-                  </div>
-                ) : null}
+                  )}
+                  {
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-around",
+                        alignItems: "center",
+                      }}
+                    >
+                      <IconButton
+                        sx={{ width: "36px" }}
+                        onClick={() =>
+                          setAllMaterials([
+                            ...allMaterials,
+                            {
+                              id: uuidv4(),
+                              material: "",
+                              price: 0,
+                              units: 0,
+                            },
+                          ])
+                        }
+                      >
+                        <AddIcon color="primary" />
+                      </IconButton>
 
-                {/* <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                      <CopyButton
+                        address={address}
+                        materials={[...allMaterials.map((m) => m.material)]}
+                        units={[...allMaterials.map((m) => m.units)]}
+                        txt="list"
+                        key={uuidv4()}
+                      />
+
+                      <CopyButton
+                        address={address}
+                        materials={[...allMaterials.map((m) => m.material)]}
+                        prices={[...allMaterials.map((m) => m.price)]}
+                        units={[...allMaterials.map((m) => m.units)]}
+                        total={total}
+                        txt="with price"
+                        key={uuidv4()}
+                      />
+
+                      <h4>Total: {total}</h4>
+                    </div>
+                  }
+                </div>
+              ) : null}
+
+              {/* <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
                   <CopyButton materials={allMaterials} />
                 </div> */}
-              </div>
             </div>
+          </div>
 
-            <div className="tableWrapper">
-              <CodesTable data={data} setData={setData} width={width} />
-            </div>
-          </>
-        ) : (
-          <h1>No Data loaded</h1>
-        )}
-      </div>
+          <div className="tableWrapper">
+            <CodesTable data={data} setData={setData} width={width} />
+          </div>
+        </>
+      ) : (
+        <h1>No Data loaded</h1>
+      )}
+    </div>
+  );
+
+  const tab2 = (
+    <div className="App">
+      <Textarea
+        placeholder="no codes found"
+        onChange={(e) => {
+          setVo(e.target.value);
+        }}
+        onBlur={(e) => {
+          const newArr: VOType[] = [];
+          const arr = e.target.value.split("\n").forEach((v) => {
+            const split = v.split("x");
+            const code = split[0].trim();
+
+            if (split[1]) {
+              const info = v.split("x")[1].trim();
+              newArr.push({ code, info });
+            }
+          });
+
+          updateVo(newArr);
+        }}
+        value={vo}
+        sx={{
+          width: "50vw",
+          minWidth: "300px",
+          maxWidth: "600px",
+          fontSize: "15px",
+          fontWeight: "500",
+        }}
+        minRows={5}
+        maxRows={30}
+        size="lg"
+      />
+      <CopyButton str={vo} key={uuidv4()} />
+    </div>
+  );
+
+  return (
+    <div className="container">
+      <AppBar />
+
+      <BasicTabs tab1={tab1} tab2={tab2} />
     </div>
   );
 }
