@@ -96,23 +96,6 @@ const UploadButton = ({
                     }
                 }
 
-                // console.log(
-                //   row[0],
-                //   row[1],
-                //   row[2],
-                //   row[3],
-                //   row[4],
-                //   row[5],
-                //   row[6],
-                //   row[7],
-                //   row[8],
-                //   row[11],
-                //   row[12],
-                //   row[14],
-                //   row[15],
-                //   row[16]
-                // );
-
                 // decide job type
                 if (row[0] === "Code") {
                     after = true;
