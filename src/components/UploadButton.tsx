@@ -79,8 +79,15 @@ const UploadButton = ({
       let arr: string[] = [];
 
       const sheets = await readSheetNames(file);
+
+      debugger;
       const data = await readFile(file, {
-        sheet: sheets[2] === "Auto Pop SPEC" ? sheets[2] : sheets[0],
+        sheet:
+          sheets[2] === "Auto Pop SPEC"
+            ? sheets[2]
+            : sheets[0] === "COPY" && sheets[1].includes("Price")
+            ? sheets[1]
+            : sheets[0],
       });
 
       let address = "";
@@ -96,7 +103,13 @@ const UploadButton = ({
               address = row[1].toString();
             }
           }
-          if (row[1] && row[1].toString().toLowerCase().includes("address")) {
+          // hammersmith & fulham
+          if (row[1] && row[1].toString() === "Property Address:") {
+            address = row[3]?.toString();
+          } else if (
+            row[1] &&
+            row[1].toString().toLowerCase().includes("address")
+          ) {
             address = row[1].toString();
           }
         }
@@ -121,19 +134,21 @@ const UploadButton = ({
         } else if (row[0] === "CODE") {
           after = true;
           jobType.current = 5;
+        } else if (row[1] === "SOR No" && row[3] === "Description") {
+          after = true;
+          jobType.current = 6;
         }
 
+        console.log(jobType.current);
         if (
           after &&
           row[0]?.toString()?.toLowerCase() !== "code" &&
           row[2] !== "Job Code"
         ) {
-          const reg = new RegExp(/\w/gi);
-
+          const reg = new RegExp(/^[a-zA-Z0-9]+$/gi);
           if (row[0] && reg.test(row[0].toString()) && jobType.current !== 4) {
             const code = row[0].toString();
             arr.push(code);
-
             if (jobType.current === 1) {
               jobData.current = [
                 ...jobData.current,
@@ -172,6 +187,23 @@ const UploadButton = ({
               ];
             }
           } else if (
+            row[1] &&
+            reg.test(row[1].toString()) &&
+            jobType.current !== 4
+          ) {
+            const code = row[1].toString();
+            arr.push(code);
+            if (jobType.current === 6) {
+              jobData.current = [
+                ...jobData.current,
+                {
+                  code,
+                  description: row[2]?.toString() || "",
+                  comments: row[8]?.toString() || "",
+                },
+              ];
+            }
+          } else if (
             jobType.current === 1 &&
             row[1] &&
             row[1]?.toString() === row[1]?.toString().toUpperCase() &&
@@ -182,7 +214,6 @@ const UploadButton = ({
             const code = array[i - 1][0].toString();
             const description = array[i - 1][1].toString();
             const comments = row[1].toString();
-
             jobData.current = [
               ...jobData.current,
               { code, description, comments },
@@ -196,7 +227,6 @@ const UploadButton = ({
             const code = row[2].toString();
             const description = row[4].toString();
             const comments = row[9]?.toString() || "";
-
             arr.push(code);
             jobData.current = [
               ...jobData.current,
@@ -250,7 +280,7 @@ const UploadButton = ({
             ref={inputRef}
             onChange={onChange}
             hidden
-            accept=".xlsx"
+            accept=".xlsx, .xlsm"
             type="file"
           />
         </Button>
