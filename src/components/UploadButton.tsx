@@ -136,6 +136,7 @@ const UploadButton = ({
           jobType.current = 5;
         } else if (row[1] === "SOR No" && row[3] === "Description") {
           after = true;
+          // hammersmith & fulham
           jobType.current = 6;
         }
 
@@ -199,7 +200,7 @@ const UploadButton = ({
                 {
                   code,
                   description: row[2]?.toString() || "",
-                  comments: row[8]?.toString() || "",
+                  comments: "",
                 },
               ];
             }
