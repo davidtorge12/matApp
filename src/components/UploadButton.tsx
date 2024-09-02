@@ -80,7 +80,6 @@ const UploadButton = ({
 
       const sheets = await readSheetNames(file);
 
-      debugger;
       const data = await readFile(file, {
         sheet:
           sheets[2] === "Auto Pop SPEC"
@@ -140,7 +139,6 @@ const UploadButton = ({
           jobType.current = 6;
         }
 
-        console.log(jobType.current);
         if (
           after &&
           row[0]?.toString()?.toLowerCase() !== "code" &&
