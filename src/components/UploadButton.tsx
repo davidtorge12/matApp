@@ -22,7 +22,7 @@ const UploadButton = ({
     Array<{ code: string; description: string; comments: string }>
   >([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const jobType = useRef(1);
+  const jobType = useRef(0);
 
   const dataFetch = async () => {
     let data: any = [];
@@ -102,9 +102,14 @@ const UploadButton = ({
               address = row[1].toString();
             }
           }
+
           // hammersmith & fulham
           if (row[1] && row[1].toString() === "Property Address:") {
             address = row[3]?.toString();
+          } else if (row[1] && row[1].toString().includes("Void Address:")) {
+            address = row[1].toString().split("Void Address:")[1] || "";
+          } else if (row[2] && row[2].toString().includes("ADDRESS:")) {
+            address = row[2].toString().split("ADDRESS:")[1] || "";
           } else if (
             row[1] &&
             row[1].toString().toLowerCase().includes("address")
@@ -114,29 +119,35 @@ const UploadButton = ({
         }
 
         // decide job type
-        if (row[0] === "Code") {
-          after = true;
-          if (
-            row[7].toString().toLowerCase() ===
-            "Specification Comments".toLowerCase()
-          ) {
-            jobType.current = 2;
-          } else {
-            jobType.current = 1;
+        if (!jobType?.current) {
+          if (row[0] === "Code") {
+            after = true;
+            if (
+              row[7].toString().toLowerCase() ===
+              "Specification Comments".toLowerCase()
+            ) {
+              jobType.current = 2;
+            } else {
+              jobType.current = 1;
+            }
+          } else if (row[0] === "SoR Code") {
+            after = true;
+            jobType.current = 3;
+          } else if (sheets[2] === "Auto Pop SPEC" && row[2] === "Job Code") {
+            after = true;
+            jobType.current = 4;
+          } else if (row[0] === "CODE") {
+            after = true;
+            jobType.current = 5;
+          } else if (row[1] === "SOR No" && row[3] === "Description") {
+            after = true;
+            // hammersmith & fulham
+            jobType.current = 6;
+          } else if (row[2] === "Code") {
+            after = true;
+            // mears
+            jobType.current = 7;
           }
-        } else if (row[0] === "SoR Code") {
-          after = true;
-          jobType.current = 3;
-        } else if (sheets[2] === "Auto Pop SPEC" && row[2] === "Job Code") {
-          after = true;
-          jobType.current = 4;
-        } else if (row[0] === "CODE") {
-          after = true;
-          jobType.current = 5;
-        } else if (row[1] === "SOR No" && row[3] === "Description") {
-          after = true;
-          // hammersmith & fulham
-          jobType.current = 6;
         }
 
         if (
@@ -144,8 +155,8 @@ const UploadButton = ({
           row[0]?.toString()?.toLowerCase() !== "code" &&
           row[2] !== "Job Code"
         ) {
-          const reg = new RegExp(/^[a-zA-Z0-9]+$/gi);
-          if (row[0] && reg.test(row[0].toString()) && jobType.current !== 4) {
+          const reg = new RegExp(/^(?=.*\d)[A-Za-z\d]{4,7}$/gm);
+          if (row[0] && reg.test(row[0].toString())) {
             const code = row[0].toString();
             arr.push(code);
             if (jobType.current === 1) {
@@ -185,11 +196,7 @@ const UploadButton = ({
                 },
               ];
             }
-          } else if (
-            row[1] &&
-            reg.test(row[1].toString()) &&
-            jobType.current !== 4
-          ) {
+          } else if (row[1] && reg.test(row[1].toString())) {
             const code = row[1].toString();
             arr.push(code);
             if (jobType.current === 6) {
@@ -202,6 +209,22 @@ const UploadButton = ({
                 },
               ];
             }
+          } else if (
+            row[2] &&
+            reg.test(row[2].toString()) &&
+            row[2].toString() !== "Code" && // has multiple code cell
+            jobType.current === 7
+          ) {
+            const code = row[2].toString();
+            arr.push(code);
+            jobData.current = [
+              ...jobData.current,
+              {
+                code,
+                description: row[1]?.toString() || "",
+                comments: row[6]?.toString() || "",
+              },
+            ];
           } else if (
             jobType.current === 1 &&
             row[1] &&
@@ -218,9 +241,22 @@ const UploadButton = ({
               { code, description, comments },
             ];
           } else if (
+            row[2] &&
+            jobType.current === 4 &&
+            reg.test(row[2].toString())
+          ) {
+            const code = row[2].toString();
+            const description = row[4].toString();
+            const comments = row[9]?.toString() || "";
+            arr.push(code);
+            jobData.current = [
+              ...jobData.current,
+              { code, description, comments },
+            ];
+          } else if (
+            // if ul asta e repetat inca o data dar nu inteleg de ce nu merge din prima
             jobType.current === 4 &&
             row[2] &&
-            row[2].toString().length > 2 &&
             reg.test(row[2].toString())
           ) {
             const code = row[2].toString();
