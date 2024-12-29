@@ -32,7 +32,7 @@ export default function BasicTable({
   width: number;
 }) {
   const onUpdateMaterialsList = (e: any, id?: string) => {
-    const value = e.target.value;
+    const value = e.target.value.trim();
     if (id) {
       updateMaterials(id, value);
     }

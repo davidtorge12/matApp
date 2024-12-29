@@ -6,25 +6,12 @@ import CodesTable from "./components/CodesTable";
 import CopyButton from "./components/CopyButton";
 import AddIcon from "@mui/icons-material/Add";
 import ClearIcon from "@mui/icons-material/Clear";
-import { IconButton, debounce } from "@mui/material";
+import { Button, IconButton, debounce } from "@mui/material";
 import { v4 as uuidv4 } from "uuid";
-import Notification from "./components/Notification";
 import BasicTabs from "./components/Tabs";
 import { Textarea } from "@mui/joy";
 
 export const env = import.meta.env;
-
-const updateVo = async (voArr: VOType[]) => {
-  const response = await fetch(`${env.VITE_SERVER_URL}/vo`, {
-    method: "POST",
-    body: JSON.stringify(voArr),
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-  });
-  await response.json();
-};
 
 type VOType = {
   code: string;
@@ -115,6 +102,22 @@ function App() {
     return response.json();
   };
 
+  const getVOCodes = async (voString: String) => {
+    const response = await fetch(`${env.VITE_SERVER_URL}/vo`, {
+      method: "POST",
+      body: JSON.stringify({ vo: voString }),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+    const { vo: voWithCodes } = await response.json();
+
+    if (voWithCodes) {
+      setVo(voWithCodes);
+    }
+  };
+
   const setAndParseMaterials = async () => {
     let matObj: any = {};
 
@@ -174,14 +177,6 @@ function App() {
   useEffect(() => {
     if (data.length) {
       setAndParseMaterials();
-
-      setVo(
-        data
-          .map((d) => {
-            return `${d.code} x ${d.info}\n`;
-          })
-          .join("")
-      );
     }
   }, [data]);
 
@@ -452,25 +447,13 @@ function App() {
   const tab2 = (
     <div className="App">
       <Textarea
-        placeholder="no codes found"
-        onChange={(e) => {
-          setVo(e.target.value);
-        }}
-        onBlur={(e) => {
-          const newArr: VOType[] = [];
-          const arr = e.target.value.split("\n").forEach((v) => {
-            const split = v.split("x");
-            const code = split[0].trim();
-
-            if (split[1]) {
-              const info = v.split("x")[1].trim();
-              newArr.push({ code, info });
-            }
-          });
-
-          updateVo(newArr);
-        }}
+        placeholder={`Paste here the VO with form like:
+    x renew Bath panel
+    x Bonding coat in patch 
+    x Bonding coat & Skimming 
+`}
         value={vo}
+        onChange={(e) => setVo(e.target.value)}
         sx={{
           width: "50vw",
           minWidth: "300px",
@@ -478,11 +461,30 @@ function App() {
           fontSize: "15px",
           fontWeight: "500",
         }}
-        minRows={5}
+        minRows={10}
         maxRows={30}
         size="lg"
       />
-      <CopyButton str={vo} keyT={uuidv4()} />
+      <div
+        style={{
+          width: "50vw",
+          minWidth: "300px",
+          maxWidth: "600px",
+          display: "flex",
+          justifyContent: "space-between",
+          gap: "15px",
+          padding: "15px",
+        }}
+      >
+        <Button
+          onClick={() => getVOCodes(vo)}
+          variant="contained"
+          disabled={!vo.trim()}
+        >
+          Get Codes from Vo
+        </Button>
+        <CopyButton str={vo} key={uuidv4()} />
+      </div>
     </div>
   );
 
