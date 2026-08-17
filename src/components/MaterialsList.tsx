@@ -27,13 +27,54 @@ import {
   Skeleton,
   Snackbar,
   Stack,
+  TableSortLabel,
   Tooltip,
   Typography,
 } from "@mui/material";
 import { buildCopyText } from "./CopyButton";
 import SortableMaterialRow, { rowGridSx } from "./SortableMaterialRow";
 import { reorderMaterials } from "../reorderMaterials";
+import {
+  MaterialSort,
+  MaterialSortKey,
+  nextMaterialSort,
+  sortMaterials,
+} from "../sortMaterials";
 import { MaterialsType } from "../types";
+
+const sortLabelSx = {
+  fontSize: "0.75rem",
+  color: "text.secondary",
+  "&.Mui-active": { color: "text.primary" },
+  "& .MuiTableSortLabel-icon": { fontSize: 14 },
+} as const;
+
+function SortHeader({
+  label,
+  column,
+  sort,
+  onSort,
+  ariaLabel,
+}: {
+  label: string;
+  column: MaterialSortKey;
+  sort: MaterialSort | null;
+  onSort: (key: MaterialSortKey) => void;
+  ariaLabel: string;
+}) {
+  const active = sort?.key === column;
+  return (
+    <TableSortLabel
+      active={active}
+      direction={active ? sort.direction : "asc"}
+      onClick={() => onSort(column)}
+      aria-label={ariaLabel}
+      sx={sortLabelSx}
+    >
+      {label}
+    </TableSortLabel>
+  );
+}
 
 function MaterialsListSkeleton({ rows }: { rows: number }) {
   return (
@@ -88,6 +129,7 @@ export default function MaterialsList({
   skeletonCount?: number;
 }) {
   const [toast, setToast] = useState("");
+  const [sort, setSort] = useState<MaterialSort | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 4 },
@@ -114,14 +156,24 @@ export default function MaterialsList({
     setToast("Copied");
   };
 
+  const handleSort = (key: MaterialSortKey) => {
+    const next = nextMaterialSort(sort, key);
+    setSort(next);
+    setAllMaterials((prev) => sortMaterials(prev, next.key, next.direction));
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over) {
       return;
     }
-    setAllMaterials((prev) =>
-      reorderMaterials(prev, String(active.id), String(over.id)),
-    );
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    if (activeId === overId) {
+      return;
+    }
+    setSort(null);
+    setAllMaterials((prev) => reorderMaterials(prev, activeId, overId));
   };
 
   return (
@@ -160,15 +212,27 @@ export default function MaterialsList({
               <Stack spacing={0.5}>
                 <Box sx={rowGridSx}>
                   <span />
-                  <Typography variant="caption" color="text.secondary">
-                    Material
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Qty
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Unit £
-                  </Typography>
+                  <SortHeader
+                    label="Material"
+                    column="material"
+                    sort={sort}
+                    onSort={handleSort}
+                    ariaLabel="Sort by material"
+                  />
+                  <SortHeader
+                    label="Qty"
+                    column="units"
+                    sort={sort}
+                    onSort={handleSort}
+                    ariaLabel="Sort by quantity"
+                  />
+                  <SortHeader
+                    label="Unit £"
+                    column="price"
+                    sort={sort}
+                    onSort={handleSort}
+                    ariaLabel="Sort by unit price"
+                  />
                   <Typography variant="caption" color="text.secondary">
                     Line
                   </Typography>
@@ -204,7 +268,8 @@ export default function MaterialsList({
           <Tooltip title="Add material">
             <IconButton
               aria-label="Add material"
-              onClick={() =>
+              onClick={() => {
+                setSort(null);
                 setAllMaterials([
                   ...allMaterials,
                   {
@@ -213,8 +278,8 @@ export default function MaterialsList({
                     price: 0,
                     units: 0,
                   },
-                ])
-              }
+                ]);
+              }}
             >
               <AddIcon color="primary" />
             </IconButton>
