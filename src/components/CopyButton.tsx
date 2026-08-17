@@ -2,86 +2,37 @@ import { useState } from "react";
 import { Button, IconButton, Snackbar, Tooltip } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 
-export function buildCopyText({
-  materials,
-  prices,
-  total,
-  address,
-  str,
-  units,
-}: {
-  materials?: string[];
-  prices?: number[];
-  units?: number[];
-  total?: number;
-  address?: string;
-  str?: string;
-}): string {
-  if (str) {
-    return str;
-  }
-
-  let allMaterialsList = "";
-  if (address) {
-    allMaterialsList += address;
-  }
-
-  if (materials) {
-    if (prices) {
-      materials.forEach((m, i) => {
-        if (units && units[i]) {
-          allMaterialsList += `${units[i]}x ${m.padEnd(45, ".")} ${
-            prices[i]
-          } £ \n`;
-        } else {
-          allMaterialsList +=
-            m.padEnd(45, ".") + " " + prices[i] + " £" + "\n";
-        }
-      });
-      if (total) {
-        allMaterialsList += `\nTotal: ${total} £ \n`;
-      }
-    } else {
-      materials.forEach((m, i) => {
-        if (units && units[i]) {
-          allMaterialsList += `${units[i]}x  ${m}` + "\n";
-        } else {
-          allMaterialsList += m + "\n";
-        }
-      });
-    }
-  }
-
-  return allMaterialsList;
-}
-
-function CopyButton({
-  materials,
-  prices,
-  total,
-  address,
-  str,
-  txt,
-  units,
+/**
+ * Copies text to the clipboard. The text is passed in rather than assembled here,
+ * so the button does not need to know anything about materials or prices.
+ */
+export default function CopyButton({
+  text,
+  label,
   disabled,
   variant = "icon",
 }: {
-  materials?: string[];
-  prices?: number[];
-  units?: number[];
-  total?: number;
-  address?: string;
-  str?: string;
-  txt?: string;
+  /** Either the string to copy, or a function called at click time. */
+  text: string | (() => string);
+  /** Spoken (and, for the button variant, visible) name. */
+  label?: string;
   disabled?: boolean;
   variant?: "icon" | "button";
 }) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState(false);
 
-  const onCopy = () => {
-    void navigator.clipboard.writeText(
-      buildCopyText({ materials, prices, total, address, str, units })
-    );
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        typeof text === "function" ? text() : text,
+      );
+      setError(false);
+    } catch {
+      // Clipboard access is refused on a non-secure origin and in some in-app
+      // browsers. Saying so beats a button that silently does nothing.
+      setError(true);
+    }
     setOpen(true);
   };
 
@@ -93,10 +44,10 @@ function CopyButton({
           onClick={onCopy}
           startIcon={<ContentCopyIcon fontSize="small" />}
         >
-          {txt || "Copy"}
+          {label || "Copy"}
         </Button>
       ) : (
-        // The tooltip stays short for pointer users; `txt` carries the longer
+        // The tooltip stays short for pointer users; `label` carries the longer
         // spoken name, since a tooltip is invisible on touch anyway.
         <Tooltip title="Copy">
           <span>
@@ -104,7 +55,7 @@ function CopyButton({
               disabled={disabled}
               color="primary"
               onClick={onCopy}
-              aria-label={txt || "Copy"}
+              aria-label={label || "Copy"}
             >
               <ContentCopyIcon fontSize="small" />
             </IconButton>
@@ -115,7 +66,7 @@ function CopyButton({
         open={open}
         autoHideDuration={2000}
         onClose={() => setOpen(false)}
-        message="Copied"
+        message={error ? "Could not copy" : "Copied"}
         // Bottom centre: clear of the sticky app bar and nearer the thumb.
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
         sx={{ mb: "env(safe-area-inset-bottom)" }}
@@ -123,5 +74,3 @@ function CopyButton({
     </>
   );
 }
-
-export default CopyButton;

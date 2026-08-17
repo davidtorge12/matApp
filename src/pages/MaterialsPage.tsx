@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { v4 as uuidv4 } from "uuid";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import AppBarActions from "../components/AppBarActions";
@@ -7,149 +6,140 @@ import CodesTable from "../components/CodesTable";
 import MaterialsList from "../components/MaterialsList";
 import UploadButton from "../components/UploadButton";
 import { getLatestCodes, getMaterialPrices, setMaterialPrice } from "../api";
+import { newId } from "../id";
+import { materialsTotal } from "../money";
 import { aggregateMaterials } from "../parseMaterials";
 import { CodeType, MaterialsType } from "../types";
+
+/** Rows of skeleton to show before the real material count is known. */
+const DEFAULT_SKELETON_ROWS = 8;
+
+function messageFrom(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
 
 export default function MaterialsPage() {
   const [data, setData] = useState<CodeType[]>([]);
   const [allMaterials, setAllMaterials] = useState<MaterialsType[]>([]);
-  const [address, setAddress] = useState<string>("");
-  const [total, setTotal] = useState<number>(0);
-  const [codesLoading, setCodesLoading] = useState<boolean>(true);
-  const [materialsLoading, setMaterialsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>("");
+  const [address, setAddress] = useState("");
+  const [codesLoading, setCodesLoading] = useState(true);
+  const [materialsLoading, setMaterialsLoading] = useState(true);
+  const [error, setError] = useState("");
   const [page, setPage] = useState(0);
   const [codesTotal, setCodesTotal] = useState(0);
   const [source, setSource] = useState<"latest" | "upload">("latest");
-  const materialsFetchId = useRef(0);
 
-  const setPrice = async (material: string, price: string) => {
+  const savePrice = async (material: string, price: number) => {
     try {
       await setMaterialPrice(material, price);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save price");
+      setError(messageFrom(err, "Failed to save price"));
     }
   };
 
-  const setLoading = (next: boolean) => {
-    setCodesLoading(next);
-    if (next) {
-      materialsFetchId.current += 1;
-      setMaterialsLoading(true);
-      setAllMaterials([]);
-    }
-  };
+  /**
+   * Every material on the page with its summed quantity. Computed once and shared
+   * by the price lookup and the skeleton sizing, which each used to aggregate the
+   * same rows independently.
+   */
+  const aggregated = useMemo(
+    () => aggregateMaterials(data.map((d) => d.materials)),
+    [data],
+  );
 
   const materialsSkeletonCount = useMemo(() => {
-    if (!data.length) {
-      return 8;
-    }
+    const count = Object.keys(aggregated).length;
+    return count ? Math.max(count, 3) : DEFAULT_SKELETON_ROWS;
+  }, [aggregated]);
 
-    const lines = data.map((d) => d.materials);
-    return Math.max(Object.keys(aggregateMaterials(lines)).length, 3);
-  }, [data]);
+  // Derived, not stored: keeping the total in state behind an effect meant every
+  // keystroke in a price field rendered twice, once with a stale total.
+  const total = useMemo(() => materialsTotal(allMaterials), [allMaterials]);
 
   useEffect(() => {
-    if (!data.length) {
+    const names = Object.keys(aggregated);
+    if (!names.length) {
       setAllMaterials([]);
+      setMaterialsLoading(false);
       return;
     }
 
-    let cancelled = false;
-    const fetchId = materialsFetchId.current;
+    const controller = new AbortController();
     setMaterialsLoading(true);
+    setAllMaterials([]);
 
-    const lines = data.map((d) => d.materials);
-    const matObj = aggregateMaterials(lines);
-
-    getMaterialPrices(matObj)
-      .then((res) => {
-        if (cancelled || fetchId !== materialsFetchId.current) {
-          return;
-        }
-        const finalArr: MaterialsType[] = Object.entries(matObj).map(
-          ([name, units]) => ({
-            id: uuidv4(),
+    getMaterialPrices(aggregated, controller.signal)
+      .then((prices) => {
+        setAllMaterials(
+          Object.entries(aggregated).map(([name, units]) => ({
+            id: newId(),
             material: name.trim(),
-            price: res[name] ? Number(res[name]) : 0,
+            price: Number(prices[name]) || 0,
             units: units || 1,
-          }),
+          })),
         );
-        setAllMaterials(finalArr);
+        setMaterialsLoading(false);
       })
       .catch((err) => {
-        if (cancelled || fetchId !== materialsFetchId.current) {
+        if (controller.signal.aborted) {
           return;
         }
-        setError(err instanceof Error ? err.message : "Failed to load prices");
-      })
-      .finally(() => {
-        if (!cancelled && fetchId === materialsFetchId.current) {
-          setMaterialsLoading(false);
-        }
+        setError(messageFrom(err, "Failed to load prices"));
+        setMaterialsLoading(false);
       });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [data]);
-
-  useEffect(() => {
-    const newTotal = allMaterials.reduce(
-      (acc, val) => acc + val.price * val.units,
-      0,
-    );
-    setTotal(Math.round(newTotal * 100) / 100);
-  }, [allMaterials]);
+    // Aborting replaces the `cancelled` flag and the fetch-id counter the previous
+    // version needed: a superseded request is cancelled outright rather than left
+    // running so its answer can be ignored on arrival.
+    return () => controller.abort();
+  }, [aggregated]);
 
   useEffect(() => {
     if (source !== "latest") {
       return;
     }
 
-    let cancelled = false;
+    const controller = new AbortController();
     setError("");
-    materialsFetchId.current += 1;
+    setCodesLoading(true);
+
+    getLatestCodes(page + 1, controller.signal)
+      .then((res) => {
+        setData(res.items);
+        setCodesTotal(res.total);
+        setCodesLoading(false);
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setError(messageFrom(err, "Failed to load codes"));
+        setCodesLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [source, page]);
+
+  const onUploadStart = useCallback(() => {
+    setError("");
     setCodesLoading(true);
     setMaterialsLoading(true);
     setAllMaterials([]);
+  }, []);
 
-    getLatestCodes(page + 1)
-      .then((res) => {
-        if (cancelled) {
-          return;
-        }
-        setData(res.items);
-        setCodesTotal(res.total);
-      })
-      .catch((err) => {
-        if (cancelled) {
-          return;
-        }
-        setError(err instanceof Error ? err.message : "Failed to load codes");
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setCodesLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [source, page]);
-
-  const onUploadData = (next: CodeType[]) => {
+  const onUploadData = useCallback((next: CodeType[]) => {
     setData(next);
     setPage(0);
+    setCodesLoading(false);
     if (next.length) {
       setSource("upload");
       setCodesTotal(next.length);
     } else {
-      setLoading(true);
+      // Cleared: fall back to the server's latest codes. Bumping `source` is what
+      // re-runs the fetch effect.
       setSource("latest");
     }
-  };
+  }, []);
 
   return (
     <Box
@@ -160,15 +150,15 @@ export default function MaterialsPage() {
     >
       <AppBarActions>
         <UploadButton
-          setData={onUploadData}
-          setLoading={setLoading}
-          setError={setError}
-          setAddress={setAddress}
+          onData={onUploadData}
+          onStart={onUploadStart}
+          onError={setError}
+          onAddress={setAddress}
         />
       </AppBarActions>
       <Box sx={{ maxWidth: 1600, mx: "auto" }}>
         {error ? (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>
             {error}
           </Alert>
         ) : null}
@@ -196,7 +186,7 @@ export default function MaterialsPage() {
               allMaterials={allMaterials}
               setAllMaterials={setAllMaterials}
               total={total}
-              onSavePrice={setPrice}
+              onSavePrice={savePrice}
               loading={materialsLoading}
               skeletonCount={materialsSkeletonCount}
             />
@@ -209,6 +199,7 @@ export default function MaterialsPage() {
               count={source === "upload" ? data.length : codesTotal}
               serverPaged={source === "latest"}
               onPageChange={setPage}
+              onError={setError}
               loading={codesLoading}
             />
           </Box>

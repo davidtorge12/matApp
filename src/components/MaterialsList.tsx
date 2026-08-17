@@ -21,7 +21,6 @@ import CheckIcon from "@mui/icons-material/Check";
 import SwapVertIcon from "@mui/icons-material/SwapVert";
 import UnfoldLessIcon from "@mui/icons-material/UnfoldLess";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
-import { v4 as uuidv4 } from "uuid";
 import {
   Box,
   Button,
@@ -45,8 +44,11 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { buildCopyText } from "./CopyButton";
 import SortableMaterialRow, { rowGridSx } from "./SortableMaterialRow";
+import { buildCopyText } from "../copyText";
+import { newId } from "../id";
+import { mergeDuplicateMaterial } from "../mergeDuplicateMaterial";
+import { formatMoney } from "../money";
 import { moveMaterial } from "../moveMaterial";
 import { reorderMaterials } from "../reorderMaterials";
 import {
@@ -131,26 +133,10 @@ function MaterialsListSkeleton({
         ) : (
           <Box key={i} sx={{ ...rowGridSx, mb: 0.75 }}>
             <Skeleton variant="circular" width={28} height={28} />
-            <Skeleton
-              variant="rectangular"
-              height={28}
-              sx={{ borderRadius: 1 }}
-            />
-            <Skeleton
-              variant="rectangular"
-              height={28}
-              sx={{ borderRadius: 1 }}
-            />
-            <Skeleton
-              variant="rectangular"
-              height={28}
-              sx={{ borderRadius: 1 }}
-            />
-            <Skeleton
-              variant="rectangular"
-              height={28}
-              sx={{ borderRadius: 1 }}
-            />
+            <Skeleton variant="rectangular" height={28} sx={{ borderRadius: 1 }} />
+            <Skeleton variant="rectangular" height={28} sx={{ borderRadius: 1 }} />
+            <Skeleton variant="rectangular" height={28} sx={{ borderRadius: 1 }} />
+            <Skeleton variant="rectangular" height={28} sx={{ borderRadius: 1 }} />
             <Skeleton variant="circular" width={28} height={28} />
           </Box>
         ),
@@ -174,12 +160,14 @@ export default function MaterialsList({
     value: MaterialsType[] | ((prev: MaterialsType[]) => MaterialsType[]),
   ) => void;
   total: number;
-  onSavePrice: (material: string, price: string) => void;
+  onSavePrice: (material: string, price: number) => void;
   loading?: boolean;
   skeletonCount?: number;
 }) {
   const theme = useTheme();
-  const compact = useMediaQuery(theme.breakpoints.down("sm"));
+  // `noSsr` resolves the query before the first paint, so a phone does not render
+  // the wide grid for one frame and then reflow into cards.
+  const compact = useMediaQuery(theme.breakpoints.down("sm"), { noSsr: true });
   const [toast, setToast] = useState("");
   const [sort, setSort] = useState<MaterialSort | null>(null);
   const [sortAnchor, setSortAnchor] = useState<HTMLElement | null>(null);
@@ -205,21 +193,25 @@ export default function MaterialsList({
 
   const activeMaterial = allMaterials.find((m) => m.id === activeId) ?? null;
 
-  const copy = (withPrice: boolean) => {
-    void navigator.clipboard.writeText(
-      buildCopyText({
-        address,
-        materials: allMaterials.map((m) => m.material),
-        units: allMaterials.map((m) => m.units),
-        ...(withPrice
-          ? {
-              prices: allMaterials.map((m) => m.price),
-              total,
-            }
-          : {}),
-      }),
-    );
-    setToast("Copied");
+  const copy = async (withPrices: boolean) => {
+    try {
+      await navigator.clipboard.writeText(
+        buildCopyText(allMaterials, { address, withPrices }),
+      );
+      setToast("Copied");
+    } catch {
+      // Refused on a non-secure origin and in some in-app browsers; a button
+      // that quietly does nothing is worse than saying so.
+      setToast("Could not copy");
+    }
+  };
+
+  const handleMaterialBlur = (rowId: string) => {
+    const result = mergeDuplicateMaterial(allMaterials, rowId);
+    if (result.merged) {
+      setAllMaterials(result.materials);
+      setToast(`${result.name} already exists. Quantity increased.`);
+    }
   };
 
   const handleSort = (key: MaterialSortKey) => {
@@ -259,11 +251,11 @@ export default function MaterialsList({
     setShowDetails(true);
     setAllMaterials([
       ...allMaterials,
-      { id: uuidv4(), material: "", price: 0, units: 0 },
+      { id: newId(), material: "", price: 0, units: 0 },
     ]);
   };
 
-  const totalLabel = `Total £${total.toFixed(2)}`;
+  const totalLabel = `Total ${formatMoney(total)}`;
 
   const copyButtons = (
     <ButtonGroup
@@ -275,8 +267,8 @@ export default function MaterialsList({
       disabled={!allMaterials.length}
       sx={{ "& .MuiButton-root": { whiteSpace: "nowrap" } }}
     >
-      <Button onClick={() => copy(false)}>Copy list</Button>
-      <Button onClick={() => copy(true)}>Copy with price</Button>
+      <Button onClick={() => void copy(false)}>Copy list</Button>
+      <Button onClick={() => void copy(true)}>Copy with price</Button>
     </ButtonGroup>
   );
 
@@ -320,9 +312,7 @@ export default function MaterialsList({
           compact && allMaterials.length ? (
             <Stack direction="row" spacing={0.5} alignItems="center">
               <Button
-                startIcon={
-                  showDetails ? <UnfoldLessIcon /> : <UnfoldMoreIcon />
-                }
+                startIcon={showDetails ? <UnfoldLessIcon /> : <UnfoldMoreIcon />}
                 onClick={() => setShowDetails((shown) => !shown)}
                 aria-pressed={showDetails}
                 sx={{ whiteSpace: "nowrap" }}
@@ -423,9 +413,7 @@ export default function MaterialsList({
                       setAllMaterials={setAllMaterials}
                       onSavePrice={onSavePrice}
                       onMove={handleMove}
-                      onMerged={(name) =>
-                        setToast(`${name} already exists. Quantity increased.`)
-                      }
+                      onMaterialBlur={handleMaterialBlur}
                     />
                   ),
                 )}
@@ -453,7 +441,7 @@ export default function MaterialsList({
                     color="text.secondary"
                     sx={{ fontVariantNumeric: "tabular-nums" }}
                   >
-                    {`${activeMaterial.units} × £${activeMaterial.price}`}
+                    {`${activeMaterial.units} × ${formatMoney(activeMaterial.price)}`}
                   </Typography>
                 </Paper>
               ) : null}

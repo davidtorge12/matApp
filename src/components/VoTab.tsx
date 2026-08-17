@@ -80,7 +80,7 @@ export default function VoTab({
           Match codes
         </Button>
         <Box sx={{ display: "flex", justifyContent: "center" }}>
-          <CopyButton str={vo} variant="button" txt="Copy VO" disabled={!vo} />
+          <CopyButton text={vo} variant="button" label="Copy VO" disabled={!vo} />
         </Box>
       </CardActions>
     </Card>

@@ -5,10 +5,9 @@ import CircularProgress from "@mui/material/CircularProgress";
 import AppBar from "./components/AppBar";
 import "./App.css";
 
-export type { CodeType, MaterialsType } from "./types";
-export { REG_EXP_MATERIAL } from "./parseMaterials";
-export { env } from "./api";
-
+// Note: no re-exports of types, regexes or config live here any more. They were
+// left over from an earlier layout and meant importing a page component pulled in
+// the API module for anything that wanted a type.
 const MaterialsPage = lazy(() => import("./pages/MaterialsPage"));
 const VoPage = lazy(() => import("./pages/VoPage"));
 

@@ -21,7 +21,7 @@ describe("mergeDuplicateMaterial", () => {
     });
   });
 
-  it("increments the existing row by one and removes the duplicate", () => {
+  it("adds the duplicate's quantity and removes it", () => {
     const materials = [
       row({ id: "a", material: "screws", units: 2, price: 1.5 }),
       row({ id: "b", material: "screws", units: 1 }),
@@ -31,6 +31,19 @@ describe("mergeDuplicateMaterial", () => {
       merged: true,
       name: "screws",
       materials: [row({ id: "a", material: "screws", units: 3, price: 1.5 })],
+    });
+  });
+
+  it("carries over a quantity above one instead of discarding it", () => {
+    const materials = [
+      row({ id: "a", material: "screws", units: 2 }),
+      row({ id: "b", material: "screws", units: 7 }),
+    ];
+
+    expect(mergeDuplicateMaterial(materials, "b")).toEqual({
+      merged: true,
+      name: "screws",
+      materials: [row({ id: "a", material: "screws", units: 9 })],
     });
   });
 
@@ -60,7 +73,7 @@ describe("mergeDuplicateMaterial", () => {
     });
   });
 
-  it("matches a typed quantity prefix against the existing name", () => {
+  it("matches a typed quantity prefix against the existing name and adds it", () => {
     const materials = [
       row({ id: "a", material: "screws", units: 2 }),
       row({ id: "b", material: "3x screws", units: 3 }),
@@ -69,7 +82,7 @@ describe("mergeDuplicateMaterial", () => {
     expect(mergeDuplicateMaterial(materials, "b")).toEqual({
       merged: true,
       name: "screws",
-      materials: [row({ id: "a", material: "screws", units: 3 })],
+      materials: [row({ id: "a", material: "screws", units: 5 })],
     });
   });
 

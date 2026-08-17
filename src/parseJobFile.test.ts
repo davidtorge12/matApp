@@ -5,7 +5,7 @@ import { parseJobSheet, pickSheetName } from "./parseJobFile";
 describe("pickSheetName", () => {
   it("uses Auto Pop SPEC when that sheet exists", () => {
     expect(pickSheetName(["Cover", "Notes", "Auto Pop SPEC"])).toBe(
-      "Auto Pop SPEC"
+      "Auto Pop SPEC",
     );
   });
 
@@ -37,7 +37,7 @@ describe("parseJobSheet", () => {
         ["Code", "Description"],
         ["TOTAL", "not a code"],
         ["396001", "Gain access"],
-      ]
+      ],
     );
     expect(result.rows).toEqual([
       { code: "396001", description: "Gain access", comments: "" },

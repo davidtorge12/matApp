@@ -2,6 +2,10 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardHeader from "@mui/material/CardHeader";
+import Chip from "@mui/material/Chip";
+import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -10,25 +14,23 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TablePagination from "@mui/material/TablePagination";
 import TableRow from "@mui/material/TableRow";
-import Card from "@mui/material/Card";
-import CardHeader from "@mui/material/CardHeader";
-import Chip from "@mui/material/Chip";
-import Skeleton from "@mui/material/Skeleton";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
+import CopyButton from "./CopyButton";
+import { updateCodeMaterials } from "../api";
 import { lastPageIndex, PAGE_SIZE, pageRows } from "../pagination";
 import { CodeType } from "../types";
-import { updateCodeMaterials } from "../api";
 import { isWarningLine } from "../warningLine";
-import CopyButton from "./CopyButton";
 
-const TABLE_SKELETON_ROWS = 8;
+const SKELETON_ROWS = 8;
 
-const updateMaterials = async (id: string, materials: string) => {
-  await updateCodeMaterials(id, materials);
-};
+/** Autocorrect and spellcheck get in the way of trade terms and code strings. */
+const materialsInputProps = {
+  autoCorrect: "off",
+  spellCheck: false,
+} as const;
 
 function pageSummary(page: number, count: number): string {
   if (!count) {
@@ -39,19 +41,29 @@ function pageSummary(page: number, count: number): string {
   return `${from}–${to} of ${count}`;
 }
 
-/** Autocorrect and spellcheck get in the way of trade terms and code strings. */
-const materialsInputProps = {
-  autoCorrect: "off",
-  spellCheck: false,
-} as const;
+/** Comments flagged for attention read as a chip; the rest as plain text. */
+function CommentsCell({ comments }: { comments?: string }) {
+  if (!comments) {
+    return null;
+  }
 
-export default function BasicTable({
+  return isWarningLine(comments) ? (
+    <Chip label={comments} color="warning" />
+  ) : (
+    <Typography variant="body2" component="span">
+      {comments}
+    </Typography>
+  );
+}
+
+export default function CodesTable({
   data,
   setData,
   page,
   count,
   serverPaged,
   onPageChange,
+  onError,
   loading = false,
 }: {
   data: CodeType[];
@@ -60,52 +72,60 @@ export default function BasicTable({
   count: number;
   serverPaged: boolean;
   onPageChange: (page: number) => void;
+  /** Surfaces a failed save. Without it a lost edit looked like a successful one. */
+  onError?: (message: string) => void;
   loading?: boolean;
 }) {
   const theme = useTheme();
-  const compact = useMediaQuery(theme.breakpoints.down("sm"));
-  const showDescription = useMediaQuery(theme.breakpoints.up(750));
+  // `noSsr` resolves the query before the first paint. Without it the query reads
+  // false initially, so a phone rendered the desktop table for one frame and then
+  // reflowed into cards.
+  const compact = useMediaQuery(theme.breakpoints.down("sm"), { noSsr: true });
+  const showDescription = useMediaQuery(theme.breakpoints.up(750), {
+    noSsr: true,
+  });
 
-  const onUpdateMaterialsList = (
-    e: { target: { value: string } },
-    id?: string,
-  ) => {
-    const value = e.target.value.trim();
-    if (id) {
-      updateMaterials(id, value).catch((err) => {
-        console.error(err);
-      });
+  const saveMaterials = (row: CodeType, value: string) => {
+    const materials = value.trim();
+    if (materials === (row.materials ?? "").trim()) {
+      return;
     }
+
+    // Local state and the server are given the same trimmed value; they used to
+    // diverge, the page keeping the untrimmed text and the API the trimmed one.
+    setData(data.map((d) => (d._id === row._id ? { ...d, materials } : d)));
+
+    updateCodeMaterials(row._id, materials).catch((err: unknown) => {
+      onError?.(
+        err instanceof Error
+          ? `Could not save materials for ${row.code}: ${err.message}`
+          : `Could not save materials for ${row.code}`,
+      );
+    });
   };
 
-  const onMaterialsBlur = (
-    e: { target: { value: string } },
-    row: CodeType,
-  ) => {
-    setData([
-      ...data.map((d: CodeType) =>
-        d._id === row._id ? { ...d, materials: e.target.value } : d,
-      ),
-    ]);
-    onUpdateMaterialsList(e, row._id);
-  };
+  /** One materials editor, shared by the table and the phone cards. */
+  const materialsField = (row: CodeType, maxRows: number) => (
+    <TextField
+      multiline
+      minRows={2}
+      maxRows={maxRows}
+      fullWidth
+      placeholder="Add materials"
+      // Uncontrolled on purpose: a controlled field would re-render the whole
+      // page on every keystroke. `key` forces a fresh field when the row changes.
+      defaultValue={row.materials}
+      onBlur={(e) => saveMaterials(row, e.target.value)}
+      inputProps={{
+        ...materialsInputProps,
+        "aria-label": `Materials for code ${row.code}`,
+      }}
+    />
+  );
 
   const rows = pageRows(data, page, { serverPaged });
   const empty = !loading && !count;
   const lastPage = lastPageIndex(count);
-
-  const commentsCell = (comments?: string) => {
-    if (!comments) {
-      return null;
-    }
-    return isWarningLine(comments) ? (
-      <Chip label={comments} color="warning" />
-    ) : (
-      <Typography variant="body2" component="span">
-        {comments}
-      </Typography>
-    );
-  };
 
   return (
     <Card variant="outlined" sx={{ width: "100%" }}>
@@ -126,7 +146,7 @@ export default function BasicTable({
                and the table columns cannot fit a phone. */
             <Stack spacing={1} sx={{ px: 1, pb: 1 }}>
               {loading
-                ? Array.from({ length: TABLE_SKELETON_ROWS }, (_, i) => (
+                ? Array.from({ length: SKELETON_ROWS }, (_, i) => (
                     <Skeleton
                       key={`skeleton-${i}`}
                       variant="rectangular"
@@ -134,9 +154,9 @@ export default function BasicTable({
                       sx={{ borderRadius: 2 }}
                     />
                   ))
-                : rows.map((row: CodeType, i) => (
+                : rows.map((row) => (
                     <Box
-                      key={`${i}_${row._id}`}
+                      key={row._id}
                       sx={{
                         border: 1,
                         borderColor: "divider",
@@ -160,7 +180,7 @@ export default function BasicTable({
                         >
                           {row.code}
                         </Typography>
-                        {commentsCell(row.comments)}
+                        <CommentsCell comments={row.comments} />
                       </Box>
                       {row.description ? (
                         <Typography
@@ -171,21 +191,7 @@ export default function BasicTable({
                           {row.description}
                         </Typography>
                       ) : null}
-                      <TextField
-                        multiline
-                        minRows={2}
-                        maxRows={6}
-                        fullWidth
-                        placeholder="Add materials"
-                        label="Materials"
-                        InputLabelProps={{ shrink: true }}
-                        defaultValue={row.materials}
-                        onBlur={(e) => onMaterialsBlur(e, row)}
-                        inputProps={{
-                          ...materialsInputProps,
-                          "aria-label": `Materials for code ${row.code}`,
-                        }}
-                      />
+                      {materialsField(row, 6)}
                       <Box
                         sx={{
                           display: "flex",
@@ -194,9 +200,9 @@ export default function BasicTable({
                         }}
                       >
                         <CopyButton
-                          str={row.materials}
+                          text={row.materials}
                           variant="button"
-                          txt="Copy materials"
+                          label="Copy materials"
                           disabled={!row.materials}
                         />
                       </Box>
@@ -241,7 +247,7 @@ export default function BasicTable({
                 </TableHead>
                 <TableBody>
                   {loading
-                    ? Array.from({ length: TABLE_SKELETON_ROWS }, (_, i) => (
+                    ? Array.from({ length: SKELETON_ROWS }, (_, i) => (
                         <TableRow key={`skeleton-${i}`}>
                           <TableCell>
                             <Skeleton variant="text" width={72} />
@@ -271,9 +277,9 @@ export default function BasicTable({
                           </TableCell>
                         </TableRow>
                       ))
-                    : rows.map((row: CodeType, i) => (
+                    : rows.map((row) => (
                         <TableRow
-                          key={`${i}_${row._id}`}
+                          key={row._id}
                           sx={{
                             "&:last-child td, &:last-child th": { border: 0 },
                           }}
@@ -289,27 +295,15 @@ export default function BasicTable({
                             </TableCell>
                           ) : null}
                           <TableCell align="center">
-                            {commentsCell(row.comments)}
+                            <CommentsCell comments={row.comments} />
                           </TableCell>
                           <TableCell align="right">
-                            <TextField
-                              multiline
-                              minRows={2}
-                              maxRows={4}
-                              fullWidth
-                              placeholder="add materials"
-                              defaultValue={row.materials}
-                              onBlur={(e) => onMaterialsBlur(e, row)}
-                              inputProps={{
-                                ...materialsInputProps,
-                                "aria-label": `Materials for code ${row.code}`,
-                              }}
-                            />
+                            {materialsField(row, 4)}
                           </TableCell>
                           <TableCell align="center">
                             <CopyButton
-                              str={row.materials}
-                              txt={`Copy materials for ${row.code}`}
+                              text={row.materials}
+                              label={`Copy materials for ${row.code}`}
                               disabled={!row.materials}
                             />
                           </TableCell>

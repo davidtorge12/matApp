@@ -1,95 +1,118 @@
+import { ChangeEvent, useRef, useState } from "react";
 import { Button, Chip } from "@mui/material";
-import { ChangeEvent, useEffect, useRef, useState } from "react";
 import CancelIcon from "@mui/icons-material/Cancel";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import readFile, { readSheetNames } from "read-excel-file";
-import { CodeType } from "../types";
-import { upsertCodes } from "../api";
+import { JobCodeUpload, upsertCodes } from "../api";
 import { JobRow, parseJobSheet, pickSheetName } from "../parseJobFile";
+import { CodeType } from "../types";
 
-const UploadButton = ({
-  setData,
-  setLoading,
-  setError,
-  setAddress,
+/** Codes per request. The API accepts up to 500; 50 keeps each round trip small. */
+const CHUNK_SIZE = 50;
+
+/**
+ * Pairs each saved code with the sheet row it came from.
+ *
+ * A Map, because the previous version scanned the whole job list for every saved
+ * code — quadratic, and on a long sheet it also took the *last* matching row
+ * rather than the first, so a code listed twice showed the wrong comments.
+ */
+export function withSheetDetail(saved: CodeType[], jobRows: JobRow[]): CodeType[] {
+  const byCode = new Map<string, JobRow>();
+  for (const row of jobRows) {
+    if (!byCode.has(row.code)) {
+      byCode.set(row.code, row);
+    }
+  }
+
+  return saved.map((code) => {
+    const row = byCode.get(code.code);
+    return {
+      ...code,
+      description: row?.description || code.description,
+      comments: row?.comments ?? "",
+    };
+  });
+}
+
+export default function UploadButton({
+  onData,
+  onStart,
+  onError,
+  onAddress,
 }: {
-  setData: (data: CodeType[]) => void;
-  setLoading: (type: boolean) => void;
-  setError?: (message: string) => void;
-  setAddress: (adress: string) => void;
-}) => {
+  onData: (data: CodeType[]) => void;
+  onStart: () => void;
+  onError: (message: string) => void;
+  onAddress: (address: string) => void;
+}) {
   const [fileName, setFileName] = useState("");
-  const [codesArr, setCodesArr] = useState<string[]>([]);
-  const jobData = useRef<JobRow[]>([]);
+  const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const dataFetch = async () => {
-    let data: CodeType[] = [];
+  const upload = async (rows: JobRow[]) => {
+    const saved: CodeType[] = [];
 
-    try {
-      const chunkSize = 50;
-      for (let i = 0; i < jobData.current.length; i += chunkSize) {
-        const chunk = jobData.current.slice(i, i + chunkSize);
-        const chunkResult = await upsertCodes(chunk);
-        data = [...data, ...chunkResult];
-      }
-
-      data = data.map((serverCode: CodeType) => {
-        let comments = "";
-        let description = "";
-        jobData.current.forEach((jobRow) => {
-          if (jobRow.code === serverCode.code) {
-            comments = jobRow.comments;
-            description = jobRow.description;
-          }
-        });
-        return {
-          ...serverCode,
-          description: description ? description : serverCode.description,
-          comments,
-        };
-      });
-
-      setData(data);
-    } catch (err) {
-      setError?.(err instanceof Error ? err.message : "Failed to upload codes");
-    } finally {
-      setLoading(false);
+    for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+      const chunk: JobCodeUpload[] = rows.slice(i, i + CHUNK_SIZE);
+      saved.push(...(await upsertCodes(chunk)));
     }
+
+    return withSheetDetail(saved, rows);
   };
-
-  useEffect(() => {
-    if (codesArr.length) {
-      setLoading(true);
-      dataFetch();
-    }
-  }, [codesArr.length]);
 
   const onChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
 
-    if (file) {
-      setLoading(true);
+    setBusy(true);
+    onStart();
 
+    // Everything from here on is inside the try. Previously a spreadsheet the
+    // parser could not read rejected outside any handler, which left the page
+    // showing skeletons forever with no message and no way back.
+    try {
       const sheets = await readSheetNames(file);
-      const data = await readFile(file, {
-        sheet: pickSheetName(sheets),
-      });
-
+      const data = await readFile(file, { sheet: pickSheetName(sheets) });
       const { address, rows } = parseJobSheet(sheets, data as unknown[][]);
-      jobData.current = rows;
+
       setFileName(file.name);
-      setCodesArr(rows.map((row) => row.code));
-      setAddress(`Address: \n${address}\n\n`);
+      onAddress(address ? `Address: \n${address}\n\n` : "");
+
+      if (!rows.length) {
+        onError(
+          "No job codes found in that file. Check it is the right sheet and try again.",
+        );
+        onData([]);
+        return;
+      }
+
+      // Called directly rather than through an effect keyed on the number of
+      // codes: two different files with the same code count left the effect
+      // unfired, so the second upload never loaded.
+      onData(await upload(rows));
+    } catch (err) {
+      onError(
+        err instanceof Error
+          ? err.message
+          : "Could not read that file. Only .xlsx and .xlsm are supported.",
+      );
+      onData([]);
+    } finally {
+      setBusy(false);
+      // Reset so re-picking the same file fires `change` again.
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
     }
   };
 
-  const onClearClick = () => {
+  const onClear = () => {
     setFileName("");
-    setCodesArr([]);
-    setData([]);
-    jobData.current = [];
-    setAddress("");
+    onAddress("");
+    onData([]);
     if (inputRef.current) {
       inputRef.current.value = "";
     }
@@ -100,7 +123,7 @@ const UploadButton = ({
       {fileName ? (
         <Chip
           label={fileName}
-          onDelete={onClearClick}
+          onDelete={onClear}
           deleteIcon={<CancelIcon titleAccess={`Clear ${fileName}`} />}
           sx={{ maxWidth: { xs: 132, sm: 220 } }}
         />
@@ -109,10 +132,11 @@ const UploadButton = ({
         variant="outlined"
         color="primary"
         component="label"
+        disabled={busy}
         startIcon={<UploadFileIcon />}
         sx={{ flexShrink: 0 }}
       >
-        Upload
+        {busy ? "Reading…" : "Upload"}
         <input
           ref={inputRef}
           onChange={onChange}
@@ -125,6 +149,4 @@ const UploadButton = ({
       </Button>
     </>
   );
-};
-
-export default UploadButton;
+}

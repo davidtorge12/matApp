@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  PAGE_SIZE,
-  lastPageIndex,
-  latestCodesPath,
-  pageRows,
-} from "./pagination";
+import { PAGE_SIZE, lastPageIndex, latestCodesPath, pageRows } from "./pagination";
 
 describe("PAGE_SIZE", () => {
   it("is 20 rows per page", () => {

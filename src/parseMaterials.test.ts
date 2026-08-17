@@ -39,7 +39,7 @@ describe("parseMaterialLine", () => {
 describe("aggregateMaterials", () => {
   it("sums quantities for the same material name", () => {
     expect(
-      aggregateMaterials(["12x screws", "2x screws", "1x blade", "", "12x screws"])
+      aggregateMaterials(["12x screws", "2x screws", "1x blade", "", "12x screws"]),
     ).toEqual({
       screws: 26,
       blade: 1,

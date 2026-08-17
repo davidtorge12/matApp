@@ -27,7 +27,7 @@ export function pickSheetName(sheets: string[]): string {
 
 function detectJobType(
   row: unknown[],
-  sheets: string[]
+  sheets: string[],
 ): { jobType: number; after: boolean } | null {
   if (row[0] === "Code") {
     const commentsHeader = cell(row, 7).toLowerCase() === "specification comments";
@@ -83,14 +83,14 @@ function pushRow(
   rows: JobRow[],
   code: string,
   description: string,
-  comments: string
+  comments: string,
 ) {
   rows.push({ code, description, comments });
 }
 
 export function parseJobSheet(
   sheets: string[],
-  data: unknown[][]
+  data: unknown[][],
 ): { address: string; rows: JobRow[] } {
   let address = "";
   let after = false;
@@ -108,11 +108,7 @@ export function parseJobSheet(
       }
     }
 
-    if (
-      after &&
-      cell(row, 0).toLowerCase() !== "code" &&
-      row[2] !== "Job Code"
-    ) {
+    if (after && cell(row, 0).toLowerCase() !== "code" && row[2] !== "Job Code") {
       const col0 = cell(row, 0);
       const col1 = cell(row, 1);
       const col2 = cell(row, 2);
@@ -141,12 +137,7 @@ export function parseJobSheet(
         array[i - 1][0] &&
         parseInt(cell(array[i - 1], 0), 10)
       ) {
-        pushRow(
-          rows,
-          cell(array[i - 1], 0),
-          cell(array[i - 1], 1),
-          col1
-        );
+        pushRow(rows, cell(array[i - 1], 0), cell(array[i - 1], 1), col1);
       } else if (col2 && jobType === 4 && isCode(col2)) {
         pushRow(rows, col2, cell(row, 4), cell(row, 9));
       }

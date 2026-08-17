@@ -13,13 +13,13 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { mergeDuplicateMaterial } from "../mergeDuplicateMaterial";
+import { formatMoney, lineTotal } from "../money";
 import {
   formatNumericInput,
   parseNumericInput,
   sanitizeNumericInput,
 } from "../numericInput";
-import { parseMaterialLine } from "../parseMaterials";
+import { parseMaterialLine, parseQuantityPrefix } from "../parseMaterials";
 import { MaterialsType } from "../types";
 import { visuallyHidden } from "./visuallyHidden";
 
@@ -46,10 +46,6 @@ const reorderButtonSx = {
 
 const numberInputSx = { fontVariantNumeric: "tabular-nums" } as const;
 
-function lineTotal(price: number, units: number): string {
-  return `£${(price * units).toFixed(2)}`;
-}
-
 export default function SortableMaterialRow({
   id,
   material,
@@ -61,7 +57,7 @@ export default function SortableMaterialRow({
   canMoveDown = false,
   setAllMaterials,
   onSavePrice,
-  onMerged,
+  onMaterialBlur,
   onMove,
 }: {
   id: string;
@@ -82,18 +78,18 @@ export default function SortableMaterialRow({
   setAllMaterials: (
     value: MaterialsType[] | ((prev: MaterialsType[]) => MaterialsType[]),
   ) => void;
-  onSavePrice: (material: string, price: string) => void;
-  onMerged: (name: string) => void;
+  onSavePrice: (material: string, price: number) => void;
+  /**
+   * Called when the name field loses focus. The duplicate check lives in the
+   * parent because it needs the whole list, and doing it here — inside a state
+   * updater, reading the result back afterwards — meant the "already exists"
+   * message was read before the updater had run, so it never appeared.
+   */
+  onMaterialBlur: (id: string) => void;
   onMove?: (id: string, offset: number) => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
 
   // Numeric fields keep the raw typed text while focused. Committing straight
   // to a number would drop a trailing decimal point and snap the field to 0
@@ -111,23 +107,13 @@ export default function SortableMaterialRow({
   };
 
   const onMaterialChange = (value: string) => {
-    const parsed = parseMaterialLine(value);
-    updateRow({ material: value, units: parsed?.units || 1 });
-  };
-
-  const onMaterialBlur = () => {
-    let mergedName: string | undefined;
-    setAllMaterials((prev) => {
-      const result = mergeDuplicateMaterial(prev, id);
-      if (!result.merged) {
-        return prev;
-      }
-      mergedName = result.name;
-      return result.materials;
-    });
-    if (mergedName) {
-      onMerged(mergedName);
-    }
+    // Only an explicit "12x " prefix sets the quantity. Reading a bare name as
+    // one unit meant that editing the name of a row whose quantity had been set
+    // to 6 silently reset it to 1 on the next keystroke.
+    const quantity = parseQuantityPrefix(value);
+    updateRow(
+      quantity ? { material: value, units: quantity.units } : { material: value },
+    );
   };
 
   const onUnitsChange = (raw: string) => {
@@ -143,9 +129,13 @@ export default function SortableMaterialRow({
   };
 
   const onPriceBlur = () => {
+    // A null draft means the field was never typed into, so tabbing through the
+    // list no longer posts an unchanged price for every row it passes.
+    const edited = priceDraft !== null;
     setPriceDraft(null);
-    const parsed = parseMaterialLine(material);
-    onSavePrice(parsed?.name || material, price.toString());
+    if (edited) {
+      onSavePrice(parseMaterialLine(material)?.name || material, price);
+    }
   };
 
   // Shared field props, so the wide and compact layouts cannot drift apart.
@@ -153,7 +143,7 @@ export default function SortableMaterialRow({
     value: material,
     onChange: (e: { target: { value: string } }) =>
       onMaterialChange(e.target.value),
-    onBlur: onMaterialBlur,
+    onBlur: () => onMaterialBlur(id),
     inputProps: {
       "aria-label": "Material name",
       // Autocorrect mangles trade terms and sizes such as "PTFE" or "25kg".
@@ -191,9 +181,7 @@ export default function SortableMaterialRow({
     <Tooltip title="Remove">
       <IconButton
         aria-label={`Remove ${rowName}`}
-        onClick={() =>
-          setAllMaterials((prev) => prev.filter((m) => m.id !== id))
-        }
+        onClick={() => setAllMaterials((prev) => prev.filter((m) => m.id !== id))}
       >
         <ClearIcon fontSize="small" />
       </IconButton>
@@ -226,9 +214,7 @@ export default function SortableMaterialRow({
           fullWidth
           sx={{ gridArea: "name" }}
         />
-        <Box
-          sx={{ gridArea: "actions", display: "flex", alignItems: "center" }}
-        >
+        <Box sx={{ gridArea: "actions", display: "flex", alignItems: "center" }}>
           {/* Up/down replace drag on the phone: dragging inside a scrolling
               list is unreliable by touch and unreachable for screen readers. */}
           <IconButton
@@ -270,9 +256,7 @@ export default function SortableMaterialRow({
               label="Unit £"
               InputLabelProps={{ shrink: true }}
               InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">£</InputAdornment>
-                ),
+                startAdornment: <InputAdornment position="start">£</InputAdornment>,
               }}
               sx={{ width: 108, "& input": numberInputSx }}
             />
@@ -288,7 +272,7 @@ export default function SortableMaterialRow({
               <Box component="span" sx={visuallyHidden}>
                 {`Line total for ${rowName}: `}
               </Box>
-              {lineTotal(price, units)}
+              {formatMoney(lineTotal(price, units))}
             </Typography>
           </Box>
         ) : null}
@@ -363,7 +347,7 @@ export default function SortableMaterialRow({
         <Box component="span" sx={visuallyHidden}>
           {`Line total for ${rowName}: `}
         </Box>
-        {lineTotal(price, units)}
+        {formatMoney(lineTotal(price, units))}
       </Typography>
       {removeButton}
     </Box>

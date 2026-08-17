@@ -3,7 +3,7 @@ export const PAGE_SIZE = 20;
 export function pageRows<T>(
   rows: T[],
   page: number,
-  options?: { serverPaged?: boolean }
+  options?: { serverPaged?: boolean },
 ): T[] {
   if (options?.serverPaged) {
     return rows;

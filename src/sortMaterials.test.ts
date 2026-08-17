@@ -16,9 +16,11 @@ describe("sortMaterials", () => {
       row({ id: "b", material: "cam lock" }),
     ];
 
-    expect(sortMaterials(materials, "material", "asc").map((m) => m.id)).toEqual(
-      ["a", "b", "c"],
-    );
+    expect(sortMaterials(materials, "material", "asc").map((m) => m.id)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
     expect(materials.map((m) => m.id)).toEqual(["c", "a", "b"]);
   });
 
@@ -29,9 +31,11 @@ describe("sortMaterials", () => {
       row({ id: "c", material: "Screws" }),
     ];
 
-    expect(sortMaterials(materials, "material", "desc").map((m) => m.id)).toEqual(
-      ["c", "b", "a"],
-    );
+    expect(sortMaterials(materials, "material", "desc").map((m) => m.id)).toEqual([
+      "c",
+      "b",
+      "a",
+    ]);
   });
 
   it("sorts quantity numerically", () => {
