@@ -1,4 +1,4 @@
-import { Button, TextField } from "@mui/material";
+import { Alert, Button, Card, CardActions, CardContent, CardHeader, TextField } from "@mui/material";
 import CopyButton from "./CopyButton";
 
 export default function VoTab({
@@ -13,49 +13,45 @@ export default function VoTab({
   onGetCodes: () => void;
 }) {
   return (
-    <div className="App">
-      {error ? <p style={{ color: "#860000" }}>{error}</p> : null}
-      <TextField
-        multiline
-        placeholder={`Paste here the VO with form like:
+    <Card variant="outlined" sx={{ width: "100%", maxWidth: 720, mx: "auto" }}>
+      <CardHeader title="VO" titleTypographyProps={{ variant: "h6" }} />
+      <CardContent>
+        {error ? (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        ) : null}
+        <TextField
+          multiline
+          placeholder={`Paste here the VO with form like:
     x renew Bath panel
     x Bonding coat in patch 
     x Bonding coat & Skimming 
 `}
-        value={vo}
-        onChange={(e) => onChange(e.target.value)}
-        minRows={10}
-        maxRows={30}
-        sx={{
-          width: "50vw",
-          minWidth: "300px",
-          maxWidth: "600px",
-          "& textarea": {
-            fontSize: "15px",
-            fontWeight: 500,
-          },
-        }}
-      />
-      <div
-        style={{
-          width: "50vw",
-          minWidth: "300px",
-          maxWidth: "600px",
-          display: "flex",
-          justifyContent: "space-between",
-          gap: "15px",
-          padding: "15px",
-        }}
-      >
+          helperText="Paste VO lines, then match SOR codes."
+          value={vo}
+          onChange={(e) => onChange(e.target.value)}
+          minRows={10}
+          maxRows={30}
+          fullWidth
+          sx={{
+            "& textarea": {
+              fontSize: "15px",
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+            },
+          }}
+        />
+      </CardContent>
+      <CardActions sx={{ px: 2, pb: 2, justifyContent: "space-between" }}>
         <Button
           onClick={onGetCodes}
           variant="contained"
           disabled={!vo.trim()}
         >
-          Get Codes from Vo
+          Match codes
         </Button>
         <CopyButton str={vo} />
-      </div>
-    </div>
+      </CardActions>
+    </Card>
   );
 }

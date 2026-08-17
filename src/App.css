@@ -1,35 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Tilt+Neon&display=swap");
-
 .container {
-  font-family: "Tilt Neon", cursive;
-  width: 100vw;
-  height: 100vh;
-}
-
-.App {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  flex-direction: column;
-}
-
-.inputFile {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.uploadButtonContainer {
-  margin: 20px;
-}
-
-.tableWrapper {
-  max-width: 1400px;
-  width: 90vw;
-}
-
-@media only screen and (max-width: 600px) {
-  .tableWrapper {
-    width: 98vw;
-  }
+  width: 100%;
+  min-height: 100vh;
 }

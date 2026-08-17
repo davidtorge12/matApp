@@ -1,7 +1,6 @@
-import { Button, IconButton } from "@mui/material";
+import { Button, Chip } from "@mui/material";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
-import ClearIcon from "@mui/icons-material/Clear";
 import readFile, { readSheetNames } from "read-excel-file";
 import { CodeType } from "../types";
 import { upsertCodes } from "../api";
@@ -90,41 +89,33 @@ const UploadButton = ({
     setData([]);
     jobData.current = [];
     setAddress("");
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
   };
 
   return (
-    <div className="uploadButtonContainer">
+    <>
       {fileName ? (
-        <div className="inputFile">
-          <h5>{fileName}</h5>
-          <IconButton
-            onClick={onClearClick}
-            aria-label="delete"
-            size="small"
-            sx={{ margin: "10px" }}
-          >
-            <ClearIcon />
-          </IconButton>
-        </div>
-      ) : (
-        <Button
-          variant="contained"
-          size="large"
-          color="primary"
-          component="label"
-        >
-          Upload Job File
-          <UploadFileIcon sx={{ marginLeft: "15px" }} />
-          <input
-            ref={inputRef}
-            onChange={onChange}
-            hidden
-            accept=".xlsx, .xlsm"
-            type="file"
-          />
-        </Button>
-      )}
-    </div>
+        <Chip label={fileName} onDelete={onClearClick} sx={{ maxWidth: 220 }} />
+      ) : null}
+      <Button
+        variant="outlined"
+        size="small"
+        color="primary"
+        component="label"
+        startIcon={<UploadFileIcon />}
+      >
+        Upload
+        <input
+          ref={inputRef}
+          onChange={onChange}
+          hidden
+          accept=".xlsx, .xlsm"
+          type="file"
+        />
+      </Button>
+    </>
   );
 };
 

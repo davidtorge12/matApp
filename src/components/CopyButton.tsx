@@ -1,7 +1,59 @@
-import { useEffect, useState } from "react";
-import { IconButton } from "@mui/material";
+import { useState } from "react";
+import { Button, IconButton, Snackbar, Tooltip } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import Notification from "./Notification";
+
+export function buildCopyText({
+  materials,
+  prices,
+  total,
+  address,
+  str,
+  units,
+}: {
+  materials?: string[];
+  prices?: number[];
+  units?: number[];
+  total?: number;
+  address?: string;
+  str?: string;
+}): string {
+  if (str) {
+    return str;
+  }
+
+  let allMaterialsList = "";
+  if (address) {
+    allMaterialsList += address;
+  }
+
+  if (materials) {
+    if (prices) {
+      materials.forEach((m, i) => {
+        if (units && units[i]) {
+          allMaterialsList += `${units[i]}x ${m.padEnd(45, ".")} ${
+            prices[i]
+          } £ \n`;
+        } else {
+          allMaterialsList +=
+            m.padEnd(45, ".") + " " + prices[i] + " £" + "\n";
+        }
+      });
+      if (total) {
+        allMaterialsList += `\nTotal: ${total} £ \n`;
+      }
+    } else {
+      materials.forEach((m, i) => {
+        if (units && units[i]) {
+          allMaterialsList += `${units[i]}x  ${m}` + "\n";
+        } else {
+          allMaterialsList += m + "\n";
+        }
+      });
+    }
+  }
+
+  return allMaterialsList;
+}
 
 function CopyButton({
   materials,
@@ -11,8 +63,8 @@ function CopyButton({
   str,
   txt,
   units,
-  keyT,
   disabled,
+  variant = "icon",
 }: {
   materials?: string[];
   prices?: number[];
@@ -21,75 +73,51 @@ function CopyButton({
   address?: string;
   str?: string;
   txt?: string;
-  keyT?: string;
   disabled?: boolean;
+  variant?: "icon" | "button";
 }) {
-  const [time, setTime] = useState(false);
+  const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    if (!time) {
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setTime(false);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [time]);
+  const onCopy = () => {
+    void navigator.clipboard.writeText(
+      buildCopyText({ materials, prices, total, address, str, units })
+    );
+    setOpen(true);
+  };
 
   return (
-    <div key={keyT}>
-      <IconButton
-        disabled={time || disabled}
-        size="small"
-        color="primary"
-        onClick={() => {
-          if (str) {
-            setTime(true);
-            return navigator.clipboard.writeText(str);
-          }
-
-          let allMaterialsList = "";
-          if (address) {
-            allMaterialsList += address;
-          }
-
-          if (materials) {
-            if (prices) {
-              materials.forEach((m, i) => {
-                if (units && units[i]) {
-                  allMaterialsList += `${units[i]}x ${m.padEnd(45, ".")} ${
-                    prices[i]
-                  } £ \n`;
-                } else {
-                  allMaterialsList +=
-                    m.padEnd(45, ".") + " " + prices[i] + " £" + "\n";
-                }
-              });
-              if (total) {
-                allMaterialsList += `\nTotal: ${total} £ \n`;
-              }
-            } else {
-              materials.forEach((m, i) => {
-                if (units && units[i]) {
-                  allMaterialsList += `${units[i]}x  ${m}` + "\n";
-                } else {
-                  allMaterialsList += m + "\n";
-                }
-              });
-            }
-          }
-
-          navigator.clipboard.writeText(allMaterialsList);
-          setTime(true);
-        }}
-      >
-        <ContentCopyIcon />
-        {txt ? <p>{txt}</p> : null}
-      </IconButton>
-      {time && <Notification text="Text successful copied" />}
-    </div>
+    <>
+      {variant === "button" ? (
+        <Button
+          disabled={disabled}
+          size="small"
+          onClick={onCopy}
+        >
+          {txt}
+        </Button>
+      ) : (
+        <Tooltip title={txt || "Copy"}>
+          <span>
+            <IconButton
+              disabled={disabled}
+              size="small"
+              color="primary"
+              onClick={onCopy}
+              aria-label={txt || "Copy"}
+            >
+              <ContentCopyIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+      )}
+      <Snackbar
+        open={open}
+        autoHideDuration={2000}
+        onClose={() => setOpen(false)}
+        message="Copied"
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      />
+    </>
   );
 }
 

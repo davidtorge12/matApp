@@ -1,3 +1,4 @@
+import { latestCodesPath } from "./pagination";
 import { CodeType } from "./types";
 
 export const env = import.meta.env;
@@ -51,8 +52,15 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
-export function getLatestCodes() {
-  return api<CodeType[]>("/latest");
+export type PaginatedCodes = {
+  items: CodeType[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export function getLatestCodes(page = 1) {
+  return api<PaginatedCodes>(latestCodesPath(page));
 }
 
 export function setMaterialPrice(material: string, price: string) {
