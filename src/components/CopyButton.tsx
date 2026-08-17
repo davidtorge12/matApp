@@ -90,17 +90,18 @@ function CopyButton({
       {variant === "button" ? (
         <Button
           disabled={disabled}
-          size="small"
           onClick={onCopy}
+          startIcon={<ContentCopyIcon fontSize="small" />}
         >
-          {txt}
+          {txt || "Copy"}
         </Button>
       ) : (
-        <Tooltip title={txt || "Copy"}>
+        // The tooltip stays short for pointer users; `txt` carries the longer
+        // spoken name, since a tooltip is invisible on touch anyway.
+        <Tooltip title="Copy">
           <span>
             <IconButton
               disabled={disabled}
-              size="small"
               color="primary"
               onClick={onCopy}
               aria-label={txt || "Copy"}
@@ -115,7 +116,9 @@ function CopyButton({
         autoHideDuration={2000}
         onClose={() => setOpen(false)}
         message="Copied"
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        // Bottom centre: clear of the sticky app bar and nearer the thumb.
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        sx={{ mb: "env(safe-area-inset-bottom)" }}
       />
     </>
   );

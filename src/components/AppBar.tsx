@@ -16,9 +16,23 @@ export default function AppBarMenu() {
       position="sticky"
       color="inherit"
       elevation={0}
-      sx={{ borderBottom: 1, borderColor: "divider" }}
+      sx={{
+        borderBottom: 1,
+        borderColor: "divider",
+        // Keeps the bar clear of the notch once the viewport covers it.
+        pt: "env(safe-area-inset-top)",
+      }}
     >
-      <Toolbar sx={{ gap: 2, minHeight: { xs: 56, sm: 64 }, flexWrap: "wrap" }}>
+      <Toolbar
+        sx={{
+          gap: { xs: 1, sm: 2 },
+          minHeight: { xs: 56, sm: 64 },
+          px: { xs: 1.5, sm: 3 },
+          // Wrapping turned this sticky bar into two or three rows on a phone,
+          // permanently eating vertical space.
+          flexWrap: "nowrap",
+        }}
+      >
         <Typography
           variant="h6"
           component={Link}
@@ -27,18 +41,36 @@ export default function AppBarMenu() {
             fontWeight: 600,
             color: "inherit",
             textDecoration: "none",
+            flexShrink: 0,
+            // The Materials tab already goes home, so the wordmark gives up its
+            // space on narrow screens.
+            display: { xs: "none", sm: "block" },
           }}
         >
           Mat App
         </Typography>
-        <Tabs value={current} aria-label="App pages" sx={{ minHeight: 48 }}>
+        <Tabs
+          value={current}
+          aria-label="App pages"
+          variant="scrollable"
+          allowScrollButtonsMobile
+          sx={{ minHeight: 48, flexShrink: 0 }}
+        >
           <Tab label="Materials" value="/" to="/" component={Link} />
           <Tab label="VO" value="/vo" to="/vo" component={Link} />
         </Tabs>
         <Box sx={{ flexGrow: 1 }} />
         <Box
           id={APP_BAR_ACTIONS_ID}
-          sx={{ display: "flex", alignItems: "center", gap: 1, minHeight: 32 }}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            gap: 1,
+            minHeight: 32,
+            // Lets the file name chip shrink instead of pushing the bar wider.
+            minWidth: 0,
+          }}
         />
       </Toolbar>
     </AppBar>

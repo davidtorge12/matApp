@@ -1,4 +1,13 @@
-import { Alert, Button, Card, CardActions, CardContent, CardHeader, TextField } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardActions,
+  CardContent,
+  CardHeader,
+  TextField,
+} from "@mui/material";
 import CopyButton from "./CopyButton";
 
 export default function VoTab({
@@ -14,7 +23,10 @@ export default function VoTab({
 }) {
   return (
     <Card variant="outlined" sx={{ width: "100%", maxWidth: 720, mx: "auto" }}>
-      <CardHeader title="VO" titleTypographyProps={{ variant: "h6" }} />
+      <CardHeader
+        title="VO"
+        titleTypographyProps={{ variant: "h6", component: "h1" }}
+      />
       <CardContent>
         {error ? (
           <Alert severity="error" sx={{ mb: 2 }}>
@@ -25,32 +37,51 @@ export default function VoTab({
           multiline
           placeholder={`Paste here the VO with form like:
     x renew Bath panel
-    x Bonding coat in patch 
-    x Bonding coat & Skimming 
+    x Bonding coat in patch
+    x Bonding coat & Skimming
 `}
           helperText="Paste VO lines, then match SOR codes."
           value={vo}
           onChange={(e) => onChange(e.target.value)}
-          minRows={10}
+          // Ten rows fills a whole phone screen before the buttons come into
+          // view, so the box starts smaller and grows.
+          minRows={6}
           maxRows={30}
           fullWidth
+          inputProps={{
+            "aria-label": "VO lines",
+            autoCorrect: "off",
+            spellCheck: false,
+          }}
           sx={{
             "& textarea": {
-              fontSize: "15px",
-              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+              // 16px keeps phone browsers from zooming in on focus.
+              fontSize: "1rem",
+              fontFamily:
+                "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
             },
           }}
         />
       </CardContent>
-      <CardActions sx={{ px: 2, pb: 2, justifyContent: "space-between" }}>
-        <Button
-          onClick={onGetCodes}
-          variant="contained"
-          disabled={!vo.trim()}
-        >
+      <CardActions
+        disableSpacing
+        sx={{
+          px: 2,
+          pb: 2,
+          gap: 1,
+          // Plain `column`, not `column-reverse`: reversing would leave the tab
+          // order disagreeing with what is on screen.
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
+          justifyContent: "space-between",
+        }}
+      >
+        <Button onClick={onGetCodes} variant="contained" disabled={!vo.trim()}>
           Match codes
         </Button>
-        <CopyButton str={vo} />
+        <Box sx={{ display: "flex", justifyContent: "center" }}>
+          <CopyButton str={vo} variant="button" txt="Copy VO" disabled={!vo} />
+        </Box>
       </CardActions>
     </Card>
   );

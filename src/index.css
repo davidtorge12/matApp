@@ -1,4 +1,6 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+/* The Inter stylesheet is linked from index.html so the request is not
+   serialised behind this file. Global element styling lives in the MUI
+   CssBaseline overrides in src/theme.ts. */
 
 *,
 ::after,

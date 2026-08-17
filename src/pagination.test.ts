@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { PAGE_SIZE, latestCodesPath, pageRows } from "./pagination";
+import {
+  PAGE_SIZE,
+  lastPageIndex,
+  latestCodesPath,
+  pageRows,
+} from "./pagination";
 
 describe("PAGE_SIZE", () => {
   it("is 20 rows per page", () => {
@@ -22,6 +27,21 @@ describe("pageRows", () => {
   it("does not slice rows that are already a server page", () => {
     const serverPage = items.slice(20, 40);
     expect(pageRows(serverPage, 1, { serverPaged: true })).toEqual(serverPage);
+  });
+});
+
+describe("lastPageIndex", () => {
+  it("is the zero-based index of the final page", () => {
+    expect(lastPageIndex(45)).toBe(2);
+    expect(lastPageIndex(40)).toBe(1);
+    expect(lastPageIndex(20)).toBe(0);
+    expect(lastPageIndex(21)).toBe(1);
+  });
+
+  it("is 0 when there is nothing to page", () => {
+    expect(lastPageIndex(0)).toBe(0);
+    expect(lastPageIndex(-5)).toBe(0);
+    expect(lastPageIndex(NaN)).toBe(0);
   });
 });
 

@@ -1,5 +1,6 @@
 import { Button, Chip } from "@mui/material";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
+import CancelIcon from "@mui/icons-material/Cancel";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import readFile, { readSheetNames } from "read-excel-file";
 import { CodeType } from "../types";
@@ -97,21 +98,28 @@ const UploadButton = ({
   return (
     <>
       {fileName ? (
-        <Chip label={fileName} onDelete={onClearClick} sx={{ maxWidth: 220 }} />
+        <Chip
+          label={fileName}
+          onDelete={onClearClick}
+          deleteIcon={<CancelIcon titleAccess={`Clear ${fileName}`} />}
+          sx={{ maxWidth: { xs: 132, sm: 220 } }}
+        />
       ) : null}
       <Button
         variant="outlined"
-        size="small"
         color="primary"
         component="label"
         startIcon={<UploadFileIcon />}
+        sx={{ flexShrink: 0 }}
       >
         Upload
         <input
           ref={inputRef}
           onChange={onChange}
           hidden
-          accept=".xlsx, .xlsm"
+          // The MIME types matter on iOS: with only the extensions listed, the
+          // Files picker greys spreadsheets out.
+          accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12"
           type="file"
         />
       </Button>

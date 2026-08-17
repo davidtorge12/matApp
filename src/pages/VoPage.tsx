@@ -20,7 +20,12 @@ export default function VoPage() {
   };
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 } }}>
+    <Box
+      sx={{
+        p: { xs: 1.5, md: 3 },
+        pb: { xs: "calc(12px + env(safe-area-inset-bottom))", md: 3 },
+      }}
+    >
       <VoTab
         vo={vo}
         error={error}

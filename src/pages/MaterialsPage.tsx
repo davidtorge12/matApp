@@ -152,7 +152,12 @@ export default function MaterialsPage() {
   };
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 } }}>
+    <Box
+      sx={{
+        p: { xs: 1.5, md: 3 },
+        pb: { xs: "calc(12px + env(safe-area-inset-bottom))", md: 3 },
+      }}
+    >
       <AppBarActions>
         <UploadButton
           setData={onUploadData}
@@ -181,8 +186,8 @@ export default function MaterialsPage() {
               flexShrink: 0,
               position: { md: "sticky" },
               top: { md: 80 },
-              maxHeight: { md: "calc(100vh - 96px)" },
-              height: { md: "calc(100vh - 96px)" },
+              maxHeight: { md: "calc(100dvh - 96px)" },
+              height: { md: "calc(100dvh - 96px)" },
               display: "flex",
             }}
           >

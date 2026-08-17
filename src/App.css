@@ -1,4 +1,8 @@
 .container {
   width: 100%;
+  /* 100vh is taller than the visible area on phones, because it ignores the
+     browser's own chrome; dvh tracks the real viewport. vh stays as a fallback
+     for browsers without dvh. */
   min-height: 100vh;
+  min-height: 100dvh;
 }

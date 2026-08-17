@@ -1,0 +1,19 @@
+{
+  "name": "Mat App",
+  "short_name": "Mat App",
+  "description": "Job codes, materials and VO helper.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#fafafa",
+  "theme_color": "#1565c0",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "48x48",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
