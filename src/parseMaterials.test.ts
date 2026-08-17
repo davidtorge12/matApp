@@ -45,4 +45,38 @@ describe("aggregateMaterials", () => {
       blade: 1,
     });
   });
+
+  it("splits semicolon-separated materials on one line", () => {
+    expect(
+      aggregateMaterials(["1x FD / check; 3x fire hinge; 3x fire strip"]),
+    ).toEqual({
+      "FD / check": 1,
+      "fire hinge": 3,
+      "fire strip": 3,
+    });
+  });
+
+  it("sums case-insensitive duplicates and keeps the first name", () => {
+    expect(
+      aggregateMaterials([
+        "1x white silicone",
+        "2x White Silicone",
+        "1x White silicone",
+      ]),
+    ).toEqual({
+      "white silicone": 4,
+    });
+  });
+
+  it("merges the same material across codes after splitting lists", () => {
+    expect(
+      aggregateMaterials([
+        "1x white emulsion ; 1x gloss Dulux Once",
+        "2x White Emulsion; 1x gloss Dulux Once",
+      ]),
+    ).toEqual({
+      "white emulsion": 3,
+      "gloss Dulux Once": 2,
+    });
+  });
 });

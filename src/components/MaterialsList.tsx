@@ -1,6 +1,19 @@
 import { useState } from "react";
+import {
+  closestCenter,
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import AddIcon from "@mui/icons-material/Add";
-import ClearIcon from "@mui/icons-material/Clear";
 import { v4 as uuidv4 } from "uuid";
 import {
   Box,
@@ -11,30 +24,23 @@ import {
   CardContent,
   CardHeader,
   IconButton,
-  InputAdornment,
   Skeleton,
   Snackbar,
   Stack,
-  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
 import { buildCopyText } from "./CopyButton";
-import { parseMaterialLine } from "../parseMaterials";
+import SortableMaterialRow, { rowGridSx } from "./SortableMaterialRow";
+import { reorderMaterials } from "../reorderMaterials";
 import { MaterialsType } from "../types";
-
-const rowGridSx = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) 52px 76px 72px 32px",
-  columnGap: 0.75,
-  alignItems: "center",
-} as const;
 
 function MaterialsListSkeleton({ rows }: { rows: number }) {
   return (
     <Box aria-busy="true" aria-label="Loading materials">
       {Array.from({ length: rows }, (_, i) => (
         <Box key={i} sx={{ ...rowGridSx, mb: 0.75 }}>
+          <Skeleton variant="circular" width={28} height={28} />
           <Skeleton
             variant="rectangular"
             height={28}
@@ -81,7 +87,15 @@ export default function MaterialsList({
   loading?: boolean;
   skeletonCount?: number;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [toast, setToast] = useState("");
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 4 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   const copy = (withPrice: boolean) => {
     void navigator.clipboard.writeText(
@@ -97,7 +111,17 @@ export default function MaterialsList({
           : {}),
       }),
     );
-    setCopied(true);
+    setToast("Copied");
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) {
+      return;
+    }
+    setAllMaterials((prev) =>
+      reorderMaterials(prev, String(active.id), String(over.id)),
+    );
   };
 
   return (
@@ -124,118 +148,53 @@ export default function MaterialsList({
             No materials on this page.
           </Typography>
         ) : (
-          <Stack spacing={0.5}>
-            <Box sx={rowGridSx}>
-              <Typography variant="caption" color="text.secondary">
-                Material
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Qty
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Unit £
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Line
-              </Typography>
-              <span />
-            </Box>
-            {allMaterials.map(
-              ({ id, material, price, units }: MaterialsType) => (
-                <Box key={id} sx={rowGridSx}>
-                  <TextField
-                    value={material}
-                    variant="standard"
-                    onChange={(e) => {
-                      const mat = e.target.value;
-                      const parsed = parseMaterialLine(mat);
-                      setAllMaterials((prev) =>
-                        prev.map((m: MaterialsType) =>
-                          m.id === id
-                            ? {
-                                ...m,
-                                material: mat,
-                                units: parsed?.units || 1,
-                              }
-                            : m,
-                        ),
-                      );
-                    }}
-                    size="small"
-                  />
-                  <TextField
-                    value={units}
-                    variant="standard"
-                    type="number"
-                    size="small"
-                    inputProps={{
-                      min: 0,
-                      step: 1,
-                      style: { textAlign: "right" },
-                    }}
-                    onChange={(e) => {
-                      setAllMaterials((prev) =>
-                        prev.map((m: MaterialsType) =>
-                          m.id === id
-                            ? { ...m, units: parseFloat(e.target.value) || 0 }
-                            : m,
-                        ),
-                      );
-                    }}
-                    onFocus={(e) => e.target.select()}
-                  />
-                  <TextField
-                    value={price}
-                    variant="standard"
-                    disabled={!material}
-                    type="number"
-                    size="small"
-                    inputProps={{
-                      min: 0,
-                      step: 0.1,
-                      style: { textAlign: "right" },
-                    }}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">£</InputAdornment>
-                      ),
-                    }}
-                    onChange={(e) => {
-                      setAllMaterials((prev) =>
-                        prev.map((m: MaterialsType) =>
-                          m.id === id
-                            ? { ...m, price: parseFloat(e.target.value) || 0 }
-                            : m,
-                        ),
-                      );
-                    }}
-                    onBlur={() => {
-                      const parsed = parseMaterialLine(material);
-                      onSavePrice(parsed?.name || material, price.toString());
-                    }}
-                    onFocus={(e) => e.target.select()}
-                  />
-                  <TextField
-                    value={`£${(price * units).toFixed(2)}`}
-                    variant="standard"
-                    size="small"
-                    InputProps={{ readOnly: true }}
-                    inputProps={{ style: { textAlign: "right" } }}
-                  />
-                  <Tooltip title="Remove">
-                    <IconButton
-                      aria-label="Remove material"
-                      onClick={() =>
-                        setAllMaterials(allMaterials.filter((m) => m.id !== id))
-                      }
-                    >
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={allMaterials.map((m) => m.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <Stack spacing={0.5}>
+                <Box sx={rowGridSx}>
+                  <span />
+                  <Typography variant="caption" color="text.secondary">
+                    Material
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Qty
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Unit £
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Line
+                  </Typography>
+                  <span />
                 </Box>
-              ),
-            )}
-          </Stack>
+                {allMaterials.map(
+                  ({ id, material, price, units }: MaterialsType) => (
+                    <SortableMaterialRow
+                      key={id}
+                      id={id}
+                      material={material}
+                      price={price}
+                      units={units}
+                      setAllMaterials={setAllMaterials}
+                      onSavePrice={onSavePrice}
+                      onMerged={(name) =>
+                        setToast(
+                          `${name} already exists. Quantity increased.`,
+                        )
+                      }
+                    />
+                  ),
+                )}
+              </Stack>
+            </SortableContext>
+          </DndContext>
         )}
       </CardContent>
       <CardActions
@@ -277,10 +236,10 @@ export default function MaterialsList({
         </Typography>
       </CardActions>
       <Snackbar
-        open={copied}
-        autoHideDuration={2000}
-        onClose={() => setCopied(false)}
-        message="Copied"
+        open={Boolean(toast)}
+        autoHideDuration={3000}
+        onClose={() => setToast("")}
+        message={toast}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       />
     </Card>

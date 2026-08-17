@@ -45,10 +45,7 @@ export default function MaterialsPage() {
       return 8;
     }
 
-    const lines = data
-      .map((d) => d.materials)
-      .join("\n")
-      .split("\n");
+    const lines = data.map((d) => d.materials);
     return Math.max(Object.keys(aggregateMaterials(lines)).length, 3);
   }, [data]);
 
@@ -62,10 +59,7 @@ export default function MaterialsPage() {
     const fetchId = materialsFetchId.current;
     setMaterialsLoading(true);
 
-    const lines = data
-      .map((d) => d.materials)
-      .join("\n")
-      .split("\n");
+    const lines = data.map((d) => d.materials);
     const matObj = aggregateMaterials(lines);
 
     getMaterialPrices(matObj)
