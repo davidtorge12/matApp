@@ -19,6 +19,8 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import CheckIcon from "@mui/icons-material/Check";
 import SwapVertIcon from "@mui/icons-material/SwapVert";
+import UnfoldLessIcon from "@mui/icons-material/UnfoldLess";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import { v4 as uuidv4 } from "uuid";
 import {
   Box,
@@ -108,9 +110,11 @@ function SortHeader({
 function MaterialsListSkeleton({
   rows,
   compact,
+  showDetails,
 }: {
   rows: number;
   compact: boolean;
+  showDetails: boolean;
 }) {
   return (
     <Box aria-busy="true" aria-label="Loading materials">
@@ -119,7 +123,9 @@ function MaterialsListSkeleton({
           <Skeleton
             key={i}
             variant="rectangular"
-            height={96}
+            // Matches the collapsed or expanded row height so the list does not
+            // jump when the real rows arrive.
+            height={showDetails ? 96 : 58}
             sx={{ borderRadius: 2, mb: 1 }}
           />
         ) : (
@@ -178,6 +184,10 @@ export default function MaterialsList({
   const [sort, setSort] = useState<MaterialSort | null>(null);
   const [sortAnchor, setSortAnchor] = useState<HTMLElement | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Compact by default: the phone list reads as one material per line, and the
+  // quantity/price fields are revealed on demand. Deliberately not persisted,
+  // so every visit starts from the compact view.
+  const [showDetails, setShowDetails] = useState(false);
 
   // MouseSensor and TouchSensor rather than PointerSensor: touch needs a short
   // press before a drag starts, otherwise the gesture competes with scrolling.
@@ -244,6 +254,9 @@ export default function MaterialsList({
 
   const addMaterial = () => {
     setSort(null);
+    // A new row exists to be filled in, so reveal the fields rather than
+    // leaving the quantity and price hidden behind the toggle.
+    setShowDetails(true);
     setAllMaterials([
       ...allMaterials,
       { id: uuidv4(), material: "", price: 0, units: 0 },
@@ -305,14 +318,26 @@ export default function MaterialsList({
         subheaderTypographyProps={{ sx: { whiteSpace: "pre-line" } }}
         action={
           compact && allMaterials.length ? (
-            <Button
-              startIcon={<SwapVertIcon />}
-              onClick={(e) => setSortAnchor(e.currentTarget)}
-              aria-haspopup="true"
-              aria-expanded={Boolean(sortAnchor)}
-            >
-              Sort
-            </Button>
+            <Stack direction="row" spacing={0.5} alignItems="center">
+              <Button
+                startIcon={
+                  showDetails ? <UnfoldLessIcon /> : <UnfoldMoreIcon />
+                }
+                onClick={() => setShowDetails((shown) => !shown)}
+                aria-pressed={showDetails}
+                sx={{ whiteSpace: "nowrap" }}
+              >
+                Details
+              </Button>
+              <Button
+                startIcon={<SwapVertIcon />}
+                onClick={(e) => setSortAnchor(e.currentTarget)}
+                aria-haspopup="true"
+                aria-expanded={Boolean(sortAnchor)}
+              >
+                Sort
+              </Button>
+            </Stack>
           ) : null
         }
       />
@@ -327,7 +352,11 @@ export default function MaterialsList({
         }}
       >
         {loading && !allMaterials.length ? (
-          <MaterialsListSkeleton rows={skeletonCount} compact={compact} />
+          <MaterialsListSkeleton
+            rows={skeletonCount}
+            compact={compact}
+            showDetails={showDetails}
+          />
         ) : !allMaterials.length ? (
           <Typography color="text.secondary">
             No materials on this page. Upload a job file or add one below.
@@ -388,6 +417,7 @@ export default function MaterialsList({
                       price={price}
                       units={units}
                       compact={compact}
+                      showDetails={showDetails}
                       canMoveUp={index > 0}
                       canMoveDown={index < allMaterials.length - 1}
                       setAllMaterials={setAllMaterials}

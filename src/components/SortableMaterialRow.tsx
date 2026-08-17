@@ -56,6 +56,7 @@ export default function SortableMaterialRow({
   price,
   units,
   compact = false,
+  showDetails = true,
   canMoveUp = false,
   canMoveDown = false,
   setAllMaterials,
@@ -69,6 +70,13 @@ export default function SortableMaterialRow({
   units: number;
   /** Renders the two-line phone layout instead of the wide grid row. */
   compact?: boolean;
+  /**
+   * Compact layout only. When false the quantity, unit price and line total
+   * line is left out entirely, so the list reads as one name per row. The
+   * fields are not rendered rather than hidden with CSS, which keeps them out
+   * of the tab order and out of a screen reader's way.
+   */
+  showDetails?: boolean;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
   setAllMaterials: (
@@ -199,7 +207,9 @@ export default function SortableMaterialRow({
         sx={{
           display: "grid",
           gridTemplateColumns: "minmax(0, 1fr) auto",
-          gridTemplateAreas: `"name actions" "fields fields"`,
+          gridTemplateAreas: showDetails
+            ? `"name actions" "fields fields"`
+            : `"name actions"`,
           columnGap: 0.5,
           rowGap: 1,
           alignItems: "center",
@@ -239,45 +249,49 @@ export default function SortableMaterialRow({
           </IconButton>
           {removeButton}
         </Box>
-        <Box
-          sx={{
-            gridArea: "fields",
-            display: "flex",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 1,
-          }}
-        >
-          <TextField
-            {...unitsFieldProps}
-            label="Qty"
-            InputLabelProps={{ shrink: true }}
-            sx={{ width: 72, "& input": numberInputSx }}
-          />
-          <TextField
-            {...priceFieldProps}
-            label="Unit £"
-            InputLabelProps={{ shrink: true }}
-            InputProps={{
-              startAdornment: <InputAdornment position="start">£</InputAdornment>,
-            }}
-            sx={{ width: 108, "& input": numberInputSx }}
-          />
-          <Typography
+        {showDetails ? (
+          <Box
             sx={{
-              flex: 1,
-              minWidth: 64,
-              textAlign: "right",
-              fontWeight: 700,
-              fontVariantNumeric: "tabular-nums",
+              gridArea: "fields",
+              display: "flex",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 1,
             }}
           >
-            <Box component="span" sx={visuallyHidden}>
-              {`Line total for ${rowName}: `}
-            </Box>
-            {lineTotal(price, units)}
-          </Typography>
-        </Box>
+            <TextField
+              {...unitsFieldProps}
+              label="Qty"
+              InputLabelProps={{ shrink: true }}
+              sx={{ width: 72, "& input": numberInputSx }}
+            />
+            <TextField
+              {...priceFieldProps}
+              label="Unit £"
+              InputLabelProps={{ shrink: true }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">£</InputAdornment>
+                ),
+              }}
+              sx={{ width: 108, "& input": numberInputSx }}
+            />
+            <Typography
+              sx={{
+                flex: 1,
+                minWidth: 64,
+                textAlign: "right",
+                fontWeight: 700,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              <Box component="span" sx={visuallyHidden}>
+                {`Line total for ${rowName}: `}
+              </Box>
+              {lineTotal(price, units)}
+            </Typography>
+          </Box>
+        ) : null}
       </Box>
     );
   }
