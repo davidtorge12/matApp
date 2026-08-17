@@ -1,6 +1,6 @@
 import { Alert } from "@mui/material";
 
-const Notification = ({ text, color }: { text?: string; color?: string }) => {
+const Notification = ({ text }: { text?: string }) => {
   if (!text) {
     return null;
   }

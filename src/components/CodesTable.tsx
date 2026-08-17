@@ -1,4 +1,3 @@
-import React, { MutableRefObject, useEffect, useRef, useState } from "react";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -6,20 +5,13 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
-import Textarea from "@mui/joy/Textarea";
-import { CodeType, env } from "./../App";
+import TextField from "@mui/material/TextField";
+import { CodeType } from "../types";
+import { updateCodeMaterials } from "../api";
 import CopyButton from "./CopyButton";
 
-const updateMaterials = async (id: string, materials: [string]) => {
-  const response = await fetch(`${env.VITE_SERVER_URL}/code`, {
-    method: "POST",
-    body: JSON.stringify({ param: { id, materials } }),
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-  });
-  await response.json();
+const updateMaterials = async (id: string, materials: string) => {
+  await updateCodeMaterials(id, materials);
 };
 
 export default function BasicTable({
@@ -31,10 +23,15 @@ export default function BasicTable({
   setData: (data: CodeType[]) => void;
   width: number;
 }) {
-  const onUpdateMaterialsList = (e: any, id?: string) => {
+  const onUpdateMaterialsList = (
+    e: { target: { value: string } },
+    id?: string
+  ) => {
     const value = e.target.value.trim();
     if (id) {
-      updateMaterials(id, value);
+      updateMaterials(id, value).catch((err) => {
+        console.error(err);
+      });
     }
   };
 
@@ -64,7 +61,7 @@ export default function BasicTable({
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.map((row: CodeType, i, arr) => (
+            {data.map((row: CodeType, i) => (
               <TableRow
                 key={`${i}_${row._id}`}
                 sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
@@ -85,7 +82,8 @@ export default function BasicTable({
                   {row.comments}
                 </TableCell>
                 <TableCell align="right" sx={{ position: "relative" }}>
-                  <Textarea
+                  <TextField
+                    multiline
                     onBlur={(e) => {
                       setData([
                         ...data.map((d: CodeType) => {
@@ -97,10 +95,14 @@ export default function BasicTable({
                       ]);
                       onUpdateMaterialsList(e, row._id);
                     }}
-                    sx={{ fontSize: "12px" }}
+                    sx={{
+                      fontSize: "12px",
+                      "& textarea": { fontSize: "12px" },
+                    }}
                     minRows={5}
                     maxRows={10}
-                    size="sm"
+                    size="small"
+                    fullWidth
                     placeholder="add materials"
                     defaultValue={row.materials}
                   />

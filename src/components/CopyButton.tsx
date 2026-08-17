@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { IconButton } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import Notification from "./Notification";
@@ -27,12 +27,16 @@ function CopyButton({
   const [time, setTime] = useState(false);
 
   useEffect(() => {
-    if (time) {
-      setTimeout(() => {
-        setTime(false);
-      }, 3000);
+    if (!time) {
+      return;
     }
-  });
+
+    const timer = setTimeout(() => {
+      setTime(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [time]);
 
   return (
     <div key={keyT}>
@@ -53,7 +57,7 @@ function CopyButton({
 
           if (materials) {
             if (prices) {
-              materials.map((m, i) => {
+              materials.forEach((m, i) => {
                 if (units && units[i]) {
                   allMaterialsList += `${units[i]}x ${m.padEnd(45, ".")} ${
                     prices[i]
@@ -67,7 +71,7 @@ function CopyButton({
                 allMaterialsList += `\nTotal: ${total} £ \n`;
               }
             } else {
-              materials.map((m, i) => {
+              materials.forEach((m, i) => {
                 if (units && units[i]) {
                   allMaterialsList += `${units[i]}x  ${m}` + "\n";
                 } else {
