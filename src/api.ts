@@ -150,6 +150,10 @@ export function getMaterialPrices(
   });
 }
 
+export function getMaterialNames(signal?: AbortSignal) {
+  return api<{ items: string[] }>("/materials", { signal });
+}
+
 export function getVOCodes(vo: string) {
   return api<{ vo: string }>("/vo", {
     method: "POST",

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import SearchIcon from "@mui/icons-material/Search";
 import SettingsIcon from "@mui/icons-material/Settings";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -9,11 +10,13 @@ import CardHeader from "@mui/material/CardHeader";
 import Checkbox from "@mui/material/Checkbox";
 import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import ListSubheader from "@mui/material/ListSubheader";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import Paper from "@mui/material/Paper";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
@@ -37,7 +40,9 @@ import {
   writeCodeColumnVisibility,
   type CodeColumnId,
 } from "../codeColumns";
+import { filterJobCodes, needsMaterialsCount } from "../filterJobCodes";
 import { lastPageIndex, PAGE_SIZE, pageRows } from "../pagination";
+import { applySuggestionToLastLine, suggestMaterials } from "../suggestMaterials";
 import { CodeType } from "../types";
 import { DESKTOP_INPUT_FONT_SIZE } from "../theme";
 import { isWarningLine } from "../warningLine";
@@ -48,8 +53,6 @@ const SKELETON_ROWS = 8;
 const materialsInputProps = {
   autoCorrect: "off",
   spellCheck: false,
-  // Long names stay on one line; a new material is always a new line. Sideways
-  // scroll is better than wrapping, which looked like a second material.
   wrap: "off",
   style: {
     whiteSpace: "nowrap",
@@ -57,6 +60,11 @@ const materialsInputProps = {
     fontSize: DESKTOP_INPUT_FONT_SIZE,
   },
 } as const;
+
+function lastLine(text: string): string {
+  const lines = text.split("\n");
+  return lines[lines.length - 1] ?? "";
+}
 
 function pageSummary(page: number, count: number): string {
   if (!count) {
@@ -82,6 +90,74 @@ function CommentsCell({ comments }: { comments?: string }) {
   );
 }
 
+function CodeMaterialsField({
+  row,
+  names,
+  maxRows,
+  minRows,
+  onSave,
+}: {
+  row: CodeType;
+  names: string[];
+  maxRows: number;
+  minRows: number;
+  onSave: (row: CodeType, value: string) => void;
+}) {
+  const [value, setValue] = useState(row.materials ?? "");
+  const suggestions = suggestMaterials(lastLine(value), names);
+
+  const pick = (name: string) => {
+    setValue(applySuggestionToLastLine(value, name));
+  };
+
+  return (
+    <Box sx={{ position: "relative" }}>
+      <TextField
+        multiline
+        minRows={minRows}
+        maxRows={maxRows}
+        fullWidth
+        placeholder="Add materials"
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onBlur={() => onSave(row, value)}
+        inputProps={{
+          ...materialsInputProps,
+          "aria-label": `Materials for code ${row.code}`,
+        }}
+      />
+      {suggestions.length ? (
+        <Paper
+          role="listbox"
+          aria-label={`Material suggestions for ${row.code}`}
+          sx={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            zIndex: 2,
+            mt: 0.5,
+            maxHeight: 180,
+            overflow: "auto",
+          }}
+        >
+          {suggestions.map((name) => (
+            <MenuItem
+              key={name}
+              role="option"
+              onMouseDown={(event) => {
+                event.preventDefault();
+                pick(name);
+              }}
+            >
+              {name}
+            </MenuItem>
+          ))}
+        </Paper>
+      ) : null}
+    </Box>
+  );
+}
+
 export default function CodesTable({
   data,
   setData,
@@ -91,6 +167,7 @@ export default function CodesTable({
   onPageChange,
   onError,
   loading = false,
+  materialNames = [],
 }: {
   data: CodeType[];
   setData: (data: CodeType[]) => void;
@@ -101,6 +178,7 @@ export default function CodesTable({
   /** Surfaces a failed save. Without it a lost edit looked like a successful one. */
   onError?: (message: string) => void;
   loading?: boolean;
+  materialNames?: string[];
 }) {
   const theme = useTheme();
   // `noSsr` resolves the query before the first paint. Without it the query reads
@@ -109,6 +187,8 @@ export default function CodesTable({
   const compact = useMediaQuery(theme.breakpoints.down("sm"), { noSsr: true });
   const [columnsAnchor, setColumnsAnchor] = useState<HTMLElement | null>(null);
   const [visibility, setVisibility] = useState(readCodeColumnVisibility);
+  const [query, setQuery] = useState("");
+  const [needsMaterialsOnly, setNeedsMaterialsOnly] = useState(false);
   const columnsOpen = Boolean(columnsAnchor);
 
   const handleToggleColumn = (id: CodeColumnId) => {
@@ -138,26 +218,42 @@ export default function CodesTable({
 
   /** One materials editor, shared by the table and the phone cards. */
   const materialsField = (row: CodeType, maxRows: number, minRows = 2) => (
-    <TextField
-      multiline
-      minRows={minRows}
+    <CodeMaterialsField
+      key={row._id}
+      row={row}
+      names={materialNames}
       maxRows={maxRows}
-      fullWidth
-      placeholder="Add materials"
-      // Uncontrolled on purpose: a controlled field would re-render the whole
-      // page on every keystroke. `key` forces a fresh field when the row changes.
-      defaultValue={row.materials}
-      onBlur={(e) => saveMaterials(row, e.target.value)}
-      inputProps={{
-        ...materialsInputProps,
-        "aria-label": `Materials for code ${row.code}`,
-      }}
+      minRows={minRows}
+      onSave={saveMaterials}
     />
   );
 
-  const rows = pageRows(data, page, { serverPaged });
+  const filtered = useMemo(
+    () =>
+      filterJobCodes(data, {
+        query,
+        needsMaterials: needsMaterialsOnly,
+      }),
+    [data, query, needsMaterialsOnly],
+  );
+  const filterActive = Boolean(query.trim()) || needsMaterialsOnly;
+  const pagedFromServer = serverPaged && !filterActive;
+  const displayCount = pagedFromServer ? count : filtered.length;
+  const rows = pageRows(filtered, page, { serverPaged: pagedFromServer });
   const empty = !loading && !count;
-  const lastPage = lastPageIndex(count);
+  const emptyFilter = !loading && !empty && filtered.length === 0;
+  const lastPage = lastPageIndex(displayCount);
+  const incomplete = needsMaterialsCount(data);
+
+  useEffect(() => {
+    if (pagedFromServer) {
+      return;
+    }
+    const last = lastPageIndex(filtered.length);
+    if (page > last) {
+      onPageChange(last);
+    }
+  }, [filtered.length, page, pagedFromServer, onPageChange]);
 
   const columnsMenu = (
     <>
@@ -202,11 +298,40 @@ export default function CodesTable({
     </>
   );
 
+  const filters = (
+    <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 2, pb: 1.5 }}>
+      <TextField
+        size="small"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Search"
+        fullWidth
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon fontSize="small" />
+            </InputAdornment>
+          ),
+        }}
+        inputProps={{ "aria-label": "Search job codes" }}
+      />
+      <Chip
+        clickable
+        label={`Needs materials (${incomplete})`}
+        onClick={() => setNeedsMaterialsOnly((on) => !on)}
+        color={needsMaterialsOnly ? "primary" : "default"}
+        variant={needsMaterialsOnly ? "filled" : "outlined"}
+        aria-pressed={needsMaterialsOnly}
+        sx={{ flexShrink: 0 }}
+      />
+    </Stack>
+  );
+
   return (
     <Card variant="outlined" sx={{ width: "100%" }}>
       <CardHeader
         title="Job codes"
-        subheader={empty ? undefined : pageSummary(page, count)}
+        subheader={empty ? undefined : pageSummary(page, displayCount)}
         titleTypographyProps={{ variant: "h6", component: "h2" }}
         action={columnsMenu}
       />
@@ -216,252 +341,261 @@ export default function CodesTable({
         </Typography>
       ) : (
         <>
-          {compact ? (
-            /* Stacked cards rather than a table inside its own scroll box: a
+          {filters}
+          {emptyFilter ? (
+            <Typography color="text.secondary" sx={{ px: 3, pb: 3 }}>
+              No codes match.
+            </Typography>
+          ) : (
+            <>
+              {compact ? (
+                /* Stacked cards rather than a table inside its own scroll box: a
                nested scroller wrapped around editable text is awkward by touch,
                and the table columns cannot fit a phone. */
-            <Stack spacing={1} sx={{ px: 2, pb: 1 }}>
-              {loading
-                ? Array.from({ length: SKELETON_ROWS }, (_, i) => (
-                    <Skeleton
-                      key={`skeleton-${i}`}
-                      variant="rectangular"
-                      height={96}
-                      sx={{ borderRadius: 2 }}
-                    />
-                  ))
-                : rows.map((row) => (
-                    <Box
-                      key={row._id}
-                      sx={{
-                        position: "relative",
-                        border: 1,
-                        borderColor: "divider",
-                        borderRadius: 2,
-                        p: 1,
-                        pr: visibility.copy ? 5 : 1,
-                      }}
-                    >
-                      {visibility.copy ? (
-                        <Box
-                          sx={{
-                            position: "absolute",
-                            top: 4,
-                            right: 4,
-                          }}
-                        >
-                          <CopyButton
-                            text={row.materials}
-                            label={`Copy materials for ${row.code}`}
-                            disabled={!row.materials}
-                          />
-                        </Box>
-                      ) : null}
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 1,
-                          mb:
-                            (visibility.description && row.description) ||
-                            (visibility.comments && row.comments)
-                              ? 0.5
-                              : 1,
-                          pr: visibility.copy ? 1 : 0,
-                        }}
-                      >
-                        <Typography
-                          variant="body2"
-                          component="h3"
-                          sx={{ fontWeight: 700 }}
-                        >
-                          {row.code}
-                        </Typography>
-                        {visibility.comments ? (
-                          <CommentsCell comments={row.comments} />
-                        ) : null}
-                      </Box>
-                      {visibility.description && row.description ? (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ mb: 1 }}
-                        >
-                          {row.description}
-                        </Typography>
-                      ) : null}
-                      {visibility.materials ? materialsField(row, 4, 1) : null}
-                    </Box>
-                  ))}
-            </Stack>
-          ) : (
-            <TableContainer
-              sx={{
-                // dvh tracks the real viewport; vh overshoots it on phones and
-                // tablets where the browser chrome hides and reappears.
-                maxHeight: "calc(100dvh - 220px)",
-                overscrollBehavior: "contain",
-              }}
-            >
-              <Table
-                stickyHeader
-                sx={{ minWidth: 200 }}
-                aria-label="codes table"
-                size="small"
-              >
-                <TableHead>
-                  <TableRow>
-                    <TableCell align="left">
-                      <strong>Code</strong>
-                    </TableCell>
-                    {visibility.description ? (
-                      <TableCell>
-                        <strong>Description</strong>
-                      </TableCell>
-                    ) : null}
-                    {visibility.comments ? (
-                      <TableCell align="center">
-                        <strong>Comments</strong>
-                      </TableCell>
-                    ) : null}
-                    {visibility.materials ? (
-                      <TableCell width={280} align="center">
-                        <strong>Materials</strong>
-                      </TableCell>
-                    ) : null}
-                    {visibility.copy ? (
-                      <TableCell align="center">
-                        <strong>Copy</strong>
-                      </TableCell>
-                    ) : null}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
+                <Stack spacing={1} sx={{ px: 2, pb: 1 }}>
                   {loading
                     ? Array.from({ length: SKELETON_ROWS }, (_, i) => (
-                        <TableRow key={`skeleton-${i}`}>
-                          <TableCell>
-                            <Skeleton variant="text" width={72} />
-                          </TableCell>
-                          {visibility.description ? (
-                            <TableCell>
-                              <Skeleton variant="text" width="80%" />
-                            </TableCell>
-                          ) : null}
-                          {visibility.comments ? (
-                            <TableCell>
-                              <Skeleton variant="text" width="60%" />
-                            </TableCell>
-                          ) : null}
-                          {visibility.materials ? (
-                            <TableCell>
-                              <Skeleton
-                                variant="rectangular"
-                                height={56}
-                                sx={{ borderRadius: 1 }}
-                              />
-                            </TableCell>
-                          ) : null}
-                          {visibility.copy ? (
-                            <TableCell align="center">
-                              <Skeleton
-                                variant="rectangular"
-                                width={36}
-                                height={36}
-                                sx={{ borderRadius: 1, mx: "auto" }}
-                              />
-                            </TableCell>
-                          ) : null}
-                        </TableRow>
+                        <Skeleton
+                          key={`skeleton-${i}`}
+                          variant="rectangular"
+                          height={96}
+                          sx={{ borderRadius: 2 }}
+                        />
                       ))
                     : rows.map((row) => (
-                        <TableRow
+                        <Box
                           key={row._id}
                           sx={{
-                            "&:last-child td, &:last-child th": { border: 0 },
+                            position: "relative",
+                            border: 1,
+                            borderColor: "divider",
+                            borderRadius: 2,
+                            p: 1,
+                            pr: visibility.copy ? 5 : 1,
                           }}
                         >
-                          <TableCell sx={{ fontWeight: 700 }} align="left">
-                            {row.code}
-                          </TableCell>
-                          {visibility.description ? (
-                            <TableCell component="th" scope="row">
-                              <Typography variant="body2" component="span">
-                                {row.description}
-                              </Typography>
-                            </TableCell>
-                          ) : null}
-                          {visibility.comments ? (
-                            <TableCell align="center">
-                              <CommentsCell comments={row.comments} />
-                            </TableCell>
-                          ) : null}
-                          {visibility.materials ? (
-                            <TableCell align="right">
-                              {materialsField(row, 4)}
-                            </TableCell>
-                          ) : null}
                           {visibility.copy ? (
-                            <TableCell align="center">
+                            <Box
+                              sx={{
+                                position: "absolute",
+                                top: 4,
+                                right: 4,
+                              }}
+                            >
                               <CopyButton
                                 text={row.materials}
                                 label={`Copy materials for ${row.code}`}
                                 disabled={!row.materials}
                               />
-                            </TableCell>
+                            </Box>
                           ) : null}
-                        </TableRow>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: 1,
+                              mb:
+                                (visibility.description && row.description) ||
+                                (visibility.comments && row.comments)
+                                  ? 0.5
+                                  : 1,
+                              pr: visibility.copy ? 1 : 0,
+                            }}
+                          >
+                            <Typography
+                              variant="body2"
+                              component="h3"
+                              sx={{ fontWeight: 700 }}
+                            >
+                              {row.code}
+                            </Typography>
+                            {visibility.comments ? (
+                              <CommentsCell comments={row.comments} />
+                            ) : null}
+                          </Box>
+                          {visibility.description && row.description ? (
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ mb: 1 }}
+                            >
+                              {row.description}
+                            </Typography>
+                          ) : null}
+                          {visibility.materials ? materialsField(row, 4, 1) : null}
+                        </Box>
                       ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-          {loading && !count ? null : compact ? (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 1,
-                px: 2,
-                pt: 1,
-                pb: "calc(12px + env(safe-area-inset-bottom))",
-                borderTop: 1,
-                borderColor: "divider",
-              }}
-            >
-              <Button
-                size="small"
-                startIcon={<ChevronLeftIcon />}
-                disabled={page <= 0}
-                onClick={() => onPageChange(page - 1)}
-                sx={{ "&&": { minHeight: "unset" } }}
-              >
-                Previous
-              </Button>
-              <Typography variant="body2" color="text.secondary">
-                {pageSummary(page, count)}
-              </Typography>
-              <Button
-                size="small"
-                endIcon={<ChevronRightIcon />}
-                disabled={page >= lastPage}
-                onClick={() => onPageChange(page + 1)}
-                sx={{ "&&": { minHeight: "unset" } }}
-              >
-                Next
-              </Button>
-            </Box>
-          ) : (
-            <TablePagination
-              component="div"
-              count={count}
-              page={page}
-              onPageChange={(_event, nextPage) => onPageChange(nextPage)}
-              rowsPerPage={PAGE_SIZE}
-              rowsPerPageOptions={[PAGE_SIZE]}
-            />
+                </Stack>
+              ) : (
+                <TableContainer
+                  sx={{
+                    // dvh tracks the real viewport; vh overshoots it on phones and
+                    // tablets where the browser chrome hides and reappears.
+                    maxHeight: "calc(100dvh - 220px)",
+                    overscrollBehavior: "contain",
+                  }}
+                >
+                  <Table
+                    stickyHeader
+                    sx={{ minWidth: 200 }}
+                    aria-label="codes table"
+                    size="small"
+                  >
+                    <TableHead>
+                      <TableRow>
+                        <TableCell align="left">
+                          <strong>Code</strong>
+                        </TableCell>
+                        {visibility.description ? (
+                          <TableCell>
+                            <strong>Description</strong>
+                          </TableCell>
+                        ) : null}
+                        {visibility.comments ? (
+                          <TableCell align="center">
+                            <strong>Comments</strong>
+                          </TableCell>
+                        ) : null}
+                        {visibility.materials ? (
+                          <TableCell width={280} align="center">
+                            <strong>Materials</strong>
+                          </TableCell>
+                        ) : null}
+                        {visibility.copy ? (
+                          <TableCell align="center">
+                            <strong>Copy</strong>
+                          </TableCell>
+                        ) : null}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {loading
+                        ? Array.from({ length: SKELETON_ROWS }, (_, i) => (
+                            <TableRow key={`skeleton-${i}`}>
+                              <TableCell>
+                                <Skeleton variant="text" width={72} />
+                              </TableCell>
+                              {visibility.description ? (
+                                <TableCell>
+                                  <Skeleton variant="text" width="80%" />
+                                </TableCell>
+                              ) : null}
+                              {visibility.comments ? (
+                                <TableCell>
+                                  <Skeleton variant="text" width="60%" />
+                                </TableCell>
+                              ) : null}
+                              {visibility.materials ? (
+                                <TableCell>
+                                  <Skeleton
+                                    variant="rectangular"
+                                    height={56}
+                                    sx={{ borderRadius: 1 }}
+                                  />
+                                </TableCell>
+                              ) : null}
+                              {visibility.copy ? (
+                                <TableCell align="center">
+                                  <Skeleton
+                                    variant="rectangular"
+                                    width={36}
+                                    height={36}
+                                    sx={{ borderRadius: 1, mx: "auto" }}
+                                  />
+                                </TableCell>
+                              ) : null}
+                            </TableRow>
+                          ))
+                        : rows.map((row) => (
+                            <TableRow
+                              key={row._id}
+                              sx={{
+                                "&:last-child td, &:last-child th": { border: 0 },
+                              }}
+                            >
+                              <TableCell sx={{ fontWeight: 700 }} align="left">
+                                {row.code}
+                              </TableCell>
+                              {visibility.description ? (
+                                <TableCell component="th" scope="row">
+                                  <Typography variant="body2" component="span">
+                                    {row.description}
+                                  </Typography>
+                                </TableCell>
+                              ) : null}
+                              {visibility.comments ? (
+                                <TableCell align="center">
+                                  <CommentsCell comments={row.comments} />
+                                </TableCell>
+                              ) : null}
+                              {visibility.materials ? (
+                                <TableCell align="right">
+                                  {materialsField(row, 4)}
+                                </TableCell>
+                              ) : null}
+                              {visibility.copy ? (
+                                <TableCell align="center">
+                                  <CopyButton
+                                    text={row.materials}
+                                    label={`Copy materials for ${row.code}`}
+                                    disabled={!row.materials}
+                                  />
+                                </TableCell>
+                              ) : null}
+                            </TableRow>
+                          ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+              {loading && !count ? null : compact ? (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    px: 2,
+                    pt: 1,
+                    pb: "calc(12px + env(safe-area-inset-bottom))",
+                    borderTop: 1,
+                    borderColor: "divider",
+                  }}
+                >
+                  <Button
+                    size="small"
+                    startIcon={<ChevronLeftIcon />}
+                    disabled={page <= 0}
+                    onClick={() => onPageChange(page - 1)}
+                    sx={{ "&&": { minHeight: "unset" } }}
+                  >
+                    Previous
+                  </Button>
+                  <Typography variant="body2" color="text.secondary">
+                    {pageSummary(page, displayCount)}
+                  </Typography>
+                  <Button
+                    size="small"
+                    endIcon={<ChevronRightIcon />}
+                    disabled={page >= lastPage}
+                    onClick={() => onPageChange(page + 1)}
+                    sx={{ "&&": { minHeight: "unset" } }}
+                  >
+                    Next
+                  </Button>
+                </Box>
+              ) : (
+                <TablePagination
+                  component="div"
+                  count={displayCount}
+                  page={page}
+                  onPageChange={(_event, nextPage) => onPageChange(nextPage)}
+                  rowsPerPage={PAGE_SIZE}
+                  rowsPerPageOptions={[PAGE_SIZE]}
+                />
+              )}
+            </>
           )}
         </>
       )}

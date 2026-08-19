@@ -39,9 +39,11 @@ function code(
 function Harness({
   initial,
   onError,
+  materialNames,
 }: {
   initial: CodeType[];
   onError?: (message: string) => void;
+  materialNames?: string[];
 }) {
   const [data, setData] = useState(initial);
 
@@ -54,6 +56,7 @@ function Harness({
       serverPaged={false}
       onPageChange={() => {}}
       onError={onError}
+      materialNames={materialNames}
     />
   );
 }
@@ -159,6 +162,24 @@ describe("saving a materials edit", () => {
 
     expect(updateCodeMaterials).not.toHaveBeenCalled();
   });
+
+  it("completes the last line from the catalogue and keeps the quantity", async () => {
+    const user = userEvent.setup();
+    render(
+      <Harness
+        initial={[code({ _id: "a1", code: "P100" })]}
+        materialNames={["white silicone"]}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Materials for code P100"), "2x sil");
+    await user.click(await screen.findByRole("option", { name: "white silicone" }));
+    await user.tab();
+
+    await waitFor(() =>
+      expect(updateCodeMaterials).toHaveBeenCalledWith("a1", "2x white silicone"),
+    );
+  });
 });
 
 describe("rendering", () => {
@@ -254,6 +275,60 @@ describe("rendering", () => {
   });
 });
 
+describe("searching and the empty-materials queue", () => {
+  const job = [
+    code({
+      _id: "1",
+      code: "P100",
+      description: "Paint walls",
+      materials: "2x emulsion",
+    }),
+    code({
+      _id: "2",
+      code: "P200",
+      description: "Renew deadlock",
+    }),
+    code({
+      _id: "3",
+      code: "390915",
+      description: "Strip wallpaper",
+      materials: "1x scraper",
+    }),
+  ];
+
+  it("filters the table as the search is typed", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={job} />);
+
+    await user.type(screen.getByLabelText("Search job codes"), "deadlock");
+
+    expect(screen.getByText("P200")).toBeInTheDocument();
+    expect(screen.queryByText("P100")).not.toBeInTheDocument();
+    expect(screen.getAllByText("1–1 of 1").length).toBeGreaterThan(0);
+  });
+
+  it("shows only codes that still need materials", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={job} />);
+
+    await user.click(screen.getByRole("button", { name: "Needs materials (1)" }));
+
+    expect(screen.getByText("P200")).toBeInTheDocument();
+    expect(screen.queryByText("P100")).not.toBeInTheDocument();
+    expect(screen.queryByText("390915")).not.toBeInTheDocument();
+  });
+
+  it("says when nothing matches", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={job} />);
+
+    await user.type(screen.getByLabelText("Search job codes"), "zzzz");
+
+    expect(screen.getByText("No codes match.")).toBeInTheDocument();
+    expect(screen.queryByText("P100")).not.toBeInTheDocument();
+  });
+});
+
 describe("column visibility", () => {
   it("shows a Columns control and the description column by default", () => {
     render(
@@ -278,9 +353,7 @@ describe("column visibility", () => {
     const user = userEvent.setup();
     render(
       <Harness
-        initial={[
-          code({ _id: "a1", code: "P100", description: "Paint walls" }),
-        ]}
+        initial={[code({ _id: "a1", code: "P100", description: "Paint walls" })]}
       />,
     );
 
@@ -289,7 +362,9 @@ describe("column visibility", () => {
 
     expect(screen.queryByText("Paint walls")).not.toBeInTheDocument();
     expect(screen.getByText("P100")).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Description" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: "Description" }),
+    ).toBeInTheDocument();
   });
 
   it("honours a stored description-off preference on first render", () => {
@@ -299,9 +374,7 @@ describe("column visibility", () => {
     );
     render(
       <Harness
-        initial={[
-          code({ _id: "a1", code: "P100", description: "Paint walls" }),
-        ]}
+        initial={[code({ _id: "a1", code: "P100", description: "Paint walls" })]}
       />,
     );
 

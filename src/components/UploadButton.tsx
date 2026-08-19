@@ -40,15 +40,25 @@ export default function UploadButton({
   onStart,
   onError,
   onAddress,
+  fileName: fileNameProp,
+  onFileName,
 }: {
   onData: (data: CodeType[]) => void;
   onStart: () => void;
   onError: (message: string) => void;
   onAddress: (address: string) => void;
+  fileName?: string;
+  onFileName?: (name: string) => void;
 }) {
-  const [fileName, setFileName] = useState("");
+  const [internalName, setInternalName] = useState("");
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const fileName = fileNameProp ?? internalName;
+
+  const assignFileName = (name: string) => {
+    setInternalName(name);
+    onFileName?.(name);
+  };
 
   const upload = async (rows: JobRow[]) => {
     const saved: CodeType[] = [];
@@ -78,7 +88,7 @@ export default function UploadButton({
       const data = await readFile(file, { sheet: pickSheetName(sheets) });
       const { address, rows } = parseJobSheet(sheets, data as unknown[][]);
 
-      setFileName(file.name);
+      assignFileName(file.name);
       onAddress(address ? `Address: \n${address}\n\n` : "");
 
       if (!rows.length) {
@@ -110,7 +120,7 @@ export default function UploadButton({
   };
 
   const onClear = () => {
-    setFileName("");
+    assignFileName("");
     onAddress("");
     onData([]);
     if (inputRef.current) {

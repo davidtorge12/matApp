@@ -22,9 +22,11 @@ import { MaterialsType } from "../../types";
 function Harness({
   initial,
   onSavePrice = () => {},
+  materialNames = [],
 }: {
   initial: MaterialsType[];
   onSavePrice?: (material: string, price: number) => void;
+  materialNames?: string[];
 }) {
   const [materials, setMaterials] = useState(initial);
 
@@ -35,6 +37,7 @@ function Harness({
       setAllMaterials={setMaterials}
       total={materialsTotal(materials)}
       onSavePrice={onSavePrice}
+      materialNames={materialNames}
     />
   );
 }
@@ -77,7 +80,23 @@ describe("editing a material name", () => {
 
     await user.type(screen.getByLabelText("Material name"), "12x screws");
 
-    expect(screen.getByLabelText("Quantity for 12x screws")).toHaveValue("12");
+    expect(screen.getByLabelText(/^Quantity for/)).toHaveValue("12");
+  });
+
+  it("offers a catalogue name and keeps a typed quantity prefix", async () => {
+    const user = userEvent.setup();
+    render(
+      <Harness
+        initial={[row({ id: "a", material: "", units: 1 })]}
+        materialNames={["white silicone", "screws"]}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Material name"), "2x sil");
+    await user.click(await screen.findByRole("option", { name: "white silicone" }));
+
+    expect(screen.getByLabelText("Material name")).toHaveValue("2x white silicone");
+    expect(screen.getByLabelText(/^Quantity for/)).toHaveValue("2");
   });
 });
 
@@ -227,9 +246,7 @@ describe("column visibility", () => {
   });
 
   it("shows a Columns control and the desktop fields, not move-up buttons", () => {
-    render(
-      <Harness initial={[row({ id: "a", material: "screws", units: 1 })]} />,
-    );
+    render(<Harness initial={[row({ id: "a", material: "screws", units: 1 })]} />);
 
     expect(screen.getByRole("button", { name: "Columns" })).toBeInTheDocument();
     expect(screen.getByLabelText("Material name")).toBeInTheDocument();
@@ -241,9 +258,7 @@ describe("column visibility", () => {
 
   it("hides the quantity field when Quantity is unchecked, and keeps the name", async () => {
     const user = userEvent.setup();
-    render(
-      <Harness initial={[row({ id: "a", material: "screws", units: 1 })]} />,
-    );
+    render(<Harness initial={[row({ id: "a", material: "screws", units: 1 })]} />);
 
     await user.click(screen.getByRole("button", { name: "Columns" }));
     await user.click(screen.getByRole("menuitem", { name: "Quantity" }));
@@ -258,9 +273,7 @@ describe("column visibility", () => {
       MATERIALS_COLUMNS_KEY,
       JSON.stringify({ ...DEFAULT_COLUMN_VISIBILITY, quantity: false }),
     );
-    render(
-      <Harness initial={[row({ id: "a", material: "screws", units: 1 })]} />,
-    );
+    render(<Harness initial={[row({ id: "a", material: "screws", units: 1 })]} />);
 
     expect(screen.queryByLabelText("Quantity for screws")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Material name")).toBeInTheDocument();
@@ -268,9 +281,7 @@ describe("column visibility", () => {
 
   it("writes the toggled visibility to localStorage", async () => {
     const user = userEvent.setup();
-    render(
-      <Harness initial={[row({ id: "a", material: "screws", units: 1 })]} />,
-    );
+    render(<Harness initial={[row({ id: "a", material: "screws", units: 1 })]} />);
 
     await user.click(screen.getByRole("button", { name: "Columns" }));
     await user.click(screen.getByRole("menuitem", { name: "Quantity" }));
@@ -304,7 +315,9 @@ describe("compact type on a narrow viewport", () => {
   it("keeps the compact add icon instead of a labelled button", () => {
     renderList();
 
-    expect(screen.getByRole("button", { name: "Add material" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add material" }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Add material")).not.toBeInTheDocument();
   });
 });

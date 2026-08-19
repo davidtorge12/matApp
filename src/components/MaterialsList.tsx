@@ -147,6 +147,7 @@ export default function MaterialsList({
   onSavePrice,
   loading = false,
   skeletonCount = 8,
+  materialNames = [],
 }: {
   address: string;
   allMaterials: MaterialsType[];
@@ -157,6 +158,7 @@ export default function MaterialsList({
   onSavePrice: (material: string, price: number) => void;
   loading?: boolean;
   skeletonCount?: number;
+  materialNames?: string[];
 }) {
   const [toast, setToast] = useState("");
   const [sort, setSort] = useState<MaterialSort | null>(null);
@@ -348,10 +350,7 @@ export default function MaterialsList({
         }}
       >
         {loading && !allMaterials.length ? (
-          <MaterialsListSkeleton
-            rows={skeletonCount}
-            visibility={visibility}
-          />
+          <MaterialsListSkeleton rows={skeletonCount} visibility={visibility} />
         ) : !allMaterials.length ? (
           <Typography color="text.secondary">
             No materials on this page. Upload a job file or add one below.
@@ -419,6 +418,7 @@ export default function MaterialsList({
                       setAllMaterials={setAllMaterials}
                       onSavePrice={onSavePrice}
                       onMaterialBlur={handleMaterialBlur}
+                      materialNames={materialNames}
                     />
                   ),
                 )}
@@ -479,11 +479,7 @@ export default function MaterialsList({
           },
         }}
       >
-        <Stack
-          direction="row"
-          spacing={1}
-          alignItems="center"
-        >
+        <Stack direction="row" spacing={1} alignItems="center">
           {addButton}
           {copyButtons}
         </Stack>

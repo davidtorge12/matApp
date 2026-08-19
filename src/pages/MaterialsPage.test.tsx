@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import MaterialsPage from "./MaterialsPage";
+import { writeSavedJobs } from "../savedJob";
 import { CodeType } from "../types";
 
 /**
@@ -12,10 +14,12 @@ import { CodeType } from "../types";
 
 const getLatestCodes = vi.fn();
 const getMaterialPrices = vi.fn();
+const getMaterialNames = vi.fn();
 
 vi.mock("../api", () => ({
   getLatestCodes: (...args: unknown[]) => getLatestCodes(...args),
   getMaterialPrices: (...args: unknown[]) => getMaterialPrices(...args),
+  getMaterialNames: (...args: unknown[]) => getMaterialNames(...args),
   setMaterialPrice: vi.fn().mockResolvedValue(undefined),
   updateCodeMaterials: vi.fn().mockResolvedValue(undefined),
 }));
@@ -23,6 +27,8 @@ vi.mock("../api", () => ({
 // AppBarActions portals into an element the real AppBar renders, which this page
 // does not include.
 beforeEach(() => {
+  window.localStorage.clear();
+  getMaterialNames.mockResolvedValue({ items: [] });
   const slot = document.createElement("div");
   slot.id = "app-bar-actions";
   document.body.append(slot);
@@ -91,5 +97,96 @@ describe("MaterialsPage", () => {
       ),
     ).toBeInTheDocument();
     expect(getMaterialPrices).not.toHaveBeenCalled();
+  });
+
+  it("restores the last saved job instead of fetching latest codes", async () => {
+    writeSavedJobs([
+      {
+        id: "job-1",
+        fileName: "12-test-street.xlsx",
+        address: "Address: \n12 Test Street\n\n",
+        savedAt: "2026-08-19T12:00:00.000Z",
+        codes: [
+          code({
+            _id: "1",
+            code: "P100",
+            description: "Paint walls",
+            materials: "2x screws",
+          }),
+        ],
+        materials: [
+          { id: "m1", material: "screws", units: 2, price: 1.5 },
+          { id: "m2", material: "tape", units: 1, price: 0 },
+        ],
+      },
+    ]);
+
+    render(<MaterialsPage />);
+
+    expect(await screen.findByText("P100")).toBeInTheDocument();
+    expect(screen.getByText("12-test-street.xlsx")).toBeInTheDocument();
+    expect(screen.getByLabelText("Quantity for screws")).toHaveValue("2");
+    expect(screen.getByLabelText("Quantity for tape")).toHaveValue("1");
+    expect(getLatestCodes).not.toHaveBeenCalled();
+    expect(getMaterialPrices).not.toHaveBeenCalled();
+  });
+
+  it("keeps an extra material after a remount", async () => {
+    const user = userEvent.setup();
+    writeSavedJobs([
+      {
+        id: "job-1",
+        fileName: "job.xlsx",
+        address: "",
+        savedAt: "2026-08-19T12:00:00.000Z",
+        codes: [code({ _id: "1", code: "P100", materials: "2x screws" })],
+        materials: [{ id: "m1", material: "screws", units: 2, price: 1.5 }],
+      },
+    ]);
+
+    const { unmount } = render(<MaterialsPage />);
+    await screen.findByLabelText("Quantity for screws");
+    await user.click(screen.getByRole("button", { name: "Add material" }));
+    const names = screen.getAllByLabelText("Material name");
+    await user.type(names[names.length - 1], "tape");
+    unmount();
+
+    render(<MaterialsPage />);
+
+    expect(await screen.findByLabelText("Quantity for tape")).toHaveValue("0");
+    expect(getLatestCodes).not.toHaveBeenCalled();
+  });
+
+  it("opens another saved job from Recent jobs", async () => {
+    const user = userEvent.setup();
+    writeSavedJobs([
+      {
+        id: "job-1",
+        fileName: "first.xlsx",
+        address: "Address: \n12 Test Street\n\n",
+        savedAt: "2026-08-19T12:00:00.000Z",
+        codes: [code({ _id: "1", code: "P100", materials: "2x screws" })],
+        materials: [{ id: "m1", material: "screws", units: 2, price: 1.5 }],
+      },
+      {
+        id: "job-2",
+        fileName: "second.xlsx",
+        address: "Address: \n8 Park Lane\n\n",
+        savedAt: "2026-08-18T12:00:00.000Z",
+        codes: [code({ _id: "2", code: "P200", description: "Renew deadlock" })],
+        materials: [{ id: "m2", material: "blade", units: 1, price: 4 }],
+      },
+    ]);
+
+    render(<MaterialsPage />);
+    expect(await screen.findByText("P100")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Recent jobs" }));
+    await user.click(screen.getByRole("menuitem", { name: /8 Park Lane/ }));
+
+    expect(await screen.findByText("P200")).toBeInTheDocument();
+    expect(screen.queryByText("P100")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Quantity for blade")).toHaveValue("1");
+    expect(screen.getByText("second.xlsx")).toBeInTheDocument();
   });
 });

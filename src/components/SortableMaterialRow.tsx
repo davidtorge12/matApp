@@ -11,6 +11,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import MaterialNameAutocomplete from "./MaterialNameAutocomplete";
 import type { ColumnVisibility, MaterialColumnId } from "../materialColumns";
 import { formatMoney, lineTotal } from "../money";
 import {
@@ -68,6 +69,7 @@ export default function SortableMaterialRow({
   setAllMaterials,
   onSavePrice,
   onMaterialBlur,
+  materialNames = [],
 }: {
   id: string;
   material: string;
@@ -85,6 +87,7 @@ export default function SortableMaterialRow({
    * message was read before the updater had run, so it never appeared.
    */
   onMaterialBlur: (id: string) => void;
+  materialNames?: string[];
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id });
@@ -134,20 +137,6 @@ export default function SortableMaterialRow({
     if (edited) {
       onSavePrice(parseMaterialLine(material)?.name || material, price);
     }
-  };
-
-  const materialFieldProps = {
-    value: material,
-    onChange: (e: { target: { value: string } }) =>
-      onMaterialChange(e.target.value),
-    onBlur: () => onMaterialBlur(id),
-    inputProps: {
-      "aria-label": "Material name",
-      // Autocorrect mangles trade terms and sizes such as "PTFE" or "25kg".
-      autoCorrect: "off",
-      spellCheck: false,
-      style: compactInputStyle,
-    },
   };
 
   const unitsFieldProps = {
@@ -215,7 +204,14 @@ export default function SortableMaterialRow({
           </Box>
         </Tooltip>
       ) : null}
-      <TextField {...materialFieldProps} variant="standard" />
+      <MaterialNameAutocomplete
+        value={material}
+        onChange={onMaterialChange}
+        onBlur={() => onMaterialBlur(id)}
+        names={materialNames}
+        ariaLabel="Material name"
+        inputStyle={compactInputStyle}
+      />
       {visibility.quantity ? (
         <TextField
           {...unitsFieldProps}
