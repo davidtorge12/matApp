@@ -10,12 +10,10 @@ import {
 // `createTheme` from `@mui/material/styles` in this module graph leaves
 // `createTheme` undefined (`createTheme_default is not a function`).
 import CssBaseline from "@mui/material/CssBaseline";
-import useMediaQuery from "@mui/material/useMediaQuery";
 import { ThemeProvider } from "@mui/material/styles";
 import { createAppTheme } from "./theme";
 import {
   readThemePreference,
-  resolveThemeMode,
   writeThemePreference,
   type ThemePreference,
 } from "./themePreference";
@@ -41,13 +39,7 @@ export function useThemePreference(): ThemePreferenceContextValue {
 export function ThemePreferenceProvider({ children }: { children: ReactNode }) {
   const [preference, setPreferenceState] =
     useState<ThemePreference>(readThemePreference);
-  const osDark = useMediaQuery("(prefers-color-scheme: dark)", {
-    noSsr: true,
-  });
-  const theme = useMemo(
-    () => createAppTheme(resolveThemeMode(preference, osDark)),
-    [preference, osDark],
-  );
+  const theme = useMemo(() => createAppTheme(preference), [preference]);
 
   const setPreference = useCallback((next: ThemePreference) => {
     writeThemePreference(next);

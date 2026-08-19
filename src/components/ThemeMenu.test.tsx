@@ -7,13 +7,13 @@ import ThemeMenu from "./ThemeMenu";
 import { ThemePreferenceContext } from "../ThemePreferenceContext";
 import { createAppTheme } from "../theme";
 
-function renderMenu(
-  preference: "light" | "dark" | "system" = "system",
+function renderToggle(
+  preference: "light" | "dark" = "light",
   setPreference = vi.fn(),
 ) {
   render(
     <ThemePreferenceContext.Provider value={{ preference, setPreference }}>
-      <ThemeProvider theme={createAppTheme("light")}>
+      <ThemeProvider theme={createAppTheme(preference)}>
         <ThemeMenu />
       </ThemeProvider>
     </ThemePreferenceContext.Provider>,
@@ -22,13 +22,22 @@ function renderMenu(
 }
 
 describe("ThemeMenu", () => {
-  it("opens a menu and reports Dark when that item is chosen", async () => {
+  it("switches to dark on one tap from light, without a menu", async () => {
     const user = userEvent.setup();
-    const setPreference = renderMenu("system");
+    const setPreference = renderToggle("light");
 
-    await user.click(screen.getByRole("button", { name: "Theme: System" }));
-    await user.click(screen.getByRole("menuitem", { name: "Dark" }));
+    await user.click(screen.getByRole("button", { name: "Switch to dark" }));
 
     expect(setPreference).toHaveBeenCalledWith("dark");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("switches to light on one tap from dark", async () => {
+    const user = userEvent.setup();
+    const setPreference = renderToggle("dark");
+
+    await user.click(screen.getByRole("button", { name: "Switch to light" }));
+
+    expect(setPreference).toHaveBeenCalledWith("light");
   });
 });

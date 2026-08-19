@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   THEME_PREFERENCE_KEY,
   readThemePreference,
-  resolveThemeMode,
   writeThemePreference,
 } from "./themePreference";
 
@@ -12,26 +11,26 @@ afterEach(() => {
 });
 
 describe("readThemePreference", () => {
-  it("returns system when the key is missing", () => {
-    expect(readThemePreference()).toBe("system");
+  it("returns light when the key is missing", () => {
+    expect(readThemePreference()).toBe("light");
   });
 
-  it("returns a stored light or dark value", () => {
+  it("returns a stored dark value", () => {
     window.localStorage.setItem(THEME_PREFERENCE_KEY, "dark");
     expect(readThemePreference()).toBe("dark");
   });
 
-  it("returns system for an unknown value", () => {
-    window.localStorage.setItem(THEME_PREFERENCE_KEY, "nope");
-    expect(readThemePreference()).toBe("system");
+  it("returns light for an unknown or leftover system value", () => {
+    window.localStorage.setItem(THEME_PREFERENCE_KEY, "system");
+    expect(readThemePreference()).toBe("light");
   });
 
-  it("returns system when getItem throws", () => {
+  it("returns light when getItem throws", () => {
     const original = window.localStorage.getItem;
     window.localStorage.getItem = () => {
       throw new Error("denied");
     };
-    expect(readThemePreference()).toBe("system");
+    expect(readThemePreference()).toBe("light");
     window.localStorage.getItem = original;
   });
 });
@@ -49,17 +48,5 @@ describe("writeThemePreference", () => {
     };
     expect(() => writeThemePreference("dark")).not.toThrow();
     window.localStorage.setItem = original;
-  });
-});
-
-describe("resolveThemeMode", () => {
-  it("follows the OS when preference is system", () => {
-    expect(resolveThemeMode("system", true)).toBe("dark");
-    expect(resolveThemeMode("system", false)).toBe("light");
-  });
-
-  it("ignores the OS when preference is light or dark", () => {
-    expect(resolveThemeMode("light", true)).toBe("light");
-    expect(resolveThemeMode("dark", false)).toBe("dark");
   });
 });
