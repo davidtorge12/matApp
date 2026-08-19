@@ -17,10 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import AddIcon from "@mui/icons-material/Add";
-import CheckIcon from "@mui/icons-material/Check";
-import SwapVertIcon from "@mui/icons-material/SwapVert";
-import UnfoldLessIcon from "@mui/icons-material/UnfoldLess";
-import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
+import SettingsIcon from "@mui/icons-material/Settings";
 import {
   Box,
   Button,
@@ -29,9 +26,11 @@ import {
   CardActions,
   CardContent,
   CardHeader,
+  Checkbox,
   IconButton,
   ListItemIcon,
   ListItemText,
+  ListSubheader,
   Menu,
   MenuItem,
   Paper,
@@ -41,15 +40,19 @@ import {
   TableSortLabel,
   Tooltip,
   Typography,
-  useMediaQuery,
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
 import SortableMaterialRow, { rowGridSx } from "./SortableMaterialRow";
 import { buildCopyText } from "../copyText";
 import { newId } from "../id";
+import {
+  MATERIAL_COLUMNS,
+  readColumnVisibility,
+  toggleColumn,
+  writeColumnVisibility,
+  type MaterialColumnId,
+} from "../materialColumns";
 import { mergeDuplicateMaterial } from "../mergeDuplicateMaterial";
 import { formatMoney } from "../money";
-import { moveMaterial } from "../moveMaterial";
 import { reorderMaterials } from "../reorderMaterials";
 import {
   MaterialSort,
@@ -65,12 +68,6 @@ const sortLabelSx = {
   "&.Mui-active": { color: "text.primary" },
   "& .MuiTableSortLabel-icon": { fontSize: 14 },
 } as const;
-
-const SORT_OPTIONS: { key: MaterialSortKey; label: string }[] = [
-  { key: "material", label: "Material" },
-  { key: "units", label: "Quantity" },
-  { key: "price", label: "Unit price" },
-];
 
 function directionLabel(direction: MaterialSort["direction"]): string {
   return direction === "asc" ? "ascending" : "descending";
@@ -111,36 +108,33 @@ function SortHeader({
 
 function MaterialsListSkeleton({
   rows,
-  compact,
-  showDetails,
+  visibility,
 }: {
   rows: number;
-  compact: boolean;
-  showDetails: boolean;
+  visibility: ReturnType<typeof readColumnVisibility>;
 }) {
   return (
     <Box aria-busy="true" aria-label="Loading materials">
-      {Array.from({ length: rows }, (_, i) =>
-        compact ? (
-          <Skeleton
-            key={i}
-            variant="rectangular"
-            // Matches the collapsed or expanded row height so the list does not
-            // jump when the real rows arrive.
-            height={showDetails ? 96 : 58}
-            sx={{ borderRadius: 2, mb: 1 }}
-          />
-        ) : (
-          <Box key={i} sx={{ ...rowGridSx, mb: 0.75 }}>
+      {Array.from({ length: rows }, (_, i) => (
+        <Box key={i} sx={{ ...rowGridSx(visibility), mb: 0.75 }}>
+          {visibility.sorting ? (
             <Skeleton variant="circular" width={28} height={28} />
+          ) : null}
+          <Skeleton variant="rectangular" height={28} sx={{ borderRadius: 1 }} />
+          {visibility.quantity ? (
             <Skeleton variant="rectangular" height={28} sx={{ borderRadius: 1 }} />
+          ) : null}
+          {visibility.price ? (
             <Skeleton variant="rectangular" height={28} sx={{ borderRadius: 1 }} />
+          ) : null}
+          {visibility.lineTotal ? (
             <Skeleton variant="rectangular" height={28} sx={{ borderRadius: 1 }} />
-            <Skeleton variant="rectangular" height={28} sx={{ borderRadius: 1 }} />
+          ) : null}
+          {visibility.delete ? (
             <Skeleton variant="circular" width={28} height={28} />
-          </Box>
-        ),
-      )}
+          ) : null}
+        </Box>
+      ))}
     </Box>
   );
 }
@@ -164,18 +158,11 @@ export default function MaterialsList({
   loading?: boolean;
   skeletonCount?: number;
 }) {
-  const theme = useTheme();
-  // `noSsr` resolves the query before the first paint, so a phone does not render
-  // the wide grid for one frame and then reflow into cards.
-  const compact = useMediaQuery(theme.breakpoints.down("sm"), { noSsr: true });
   const [toast, setToast] = useState("");
   const [sort, setSort] = useState<MaterialSort | null>(null);
-  const [sortAnchor, setSortAnchor] = useState<HTMLElement | null>(null);
+  const [columnsAnchor, setColumnsAnchor] = useState<HTMLElement | null>(null);
+  const [visibility, setVisibility] = useState(readColumnVisibility);
   const [activeId, setActiveId] = useState<string | null>(null);
-  // Compact by default: the phone list reads as one material per line, and the
-  // quantity/price fields are revealed on demand. Deliberately not persisted,
-  // so every visit starts from the compact view.
-  const [showDetails, setShowDetails] = useState(false);
 
   // MouseSensor and TouchSensor rather than PointerSensor: touch needs a short
   // press before a drag starts, otherwise the gesture competes with scrolling.
@@ -192,6 +179,7 @@ export default function MaterialsList({
   );
 
   const activeMaterial = allMaterials.find((m) => m.id === activeId) ?? null;
+  const columnsOpen = Boolean(columnsAnchor);
 
   const copy = async (withPrices: boolean) => {
     try {
@@ -220,11 +208,6 @@ export default function MaterialsList({
     setAllMaterials((prev) => sortMaterials(prev, next.key, next.direction));
   };
 
-  const handleMove = (id: string, offset: number) => {
-    setSort(null);
-    setAllMaterials((prev) => moveMaterial(prev, id, offset));
-  };
-
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(String(event.active.id));
   };
@@ -246,13 +229,16 @@ export default function MaterialsList({
 
   const addMaterial = () => {
     setSort(null);
-    // A new row exists to be filled in, so reveal the fields rather than
-    // leaving the quantity and price hidden behind the toggle.
-    setShowDetails(true);
     setAllMaterials([
       ...allMaterials,
       { id: newId(), material: "", price: 0, units: 0 },
     ]);
+  };
+
+  const handleToggleColumn = (id: MaterialColumnId) => {
+    const next = toggleColumn(visibility, id);
+    setVisibility(next);
+    writeColumnVisibility(next);
   };
 
   const totalLabel = `Total ${formatMoney(total)}`;
@@ -260,34 +246,79 @@ export default function MaterialsList({
   const copyButtons = (
     <ButtonGroup
       variant="outlined"
-      // The wide layout shares a 480px sidebar with the total, so it keeps the
-      // denser buttons; the phone bar has the full width to itself.
-      size={compact ? "medium" : "small"}
-      fullWidth={compact}
+      size="small"
       disabled={!allMaterials.length}
-      sx={{ "& .MuiButton-root": { whiteSpace: "nowrap" } }}
+      sx={{
+        width: { xs: "100%", sm: "auto" },
+        "& .MuiButton-root": { whiteSpace: "nowrap" },
+      }}
     >
       <Button onClick={() => void copy(false)}>Copy list</Button>
       <Button onClick={() => void copy(true)}>Copy with price</Button>
     </ButtonGroup>
   );
 
-  // Labelled on touch, where a tooltip never shows; icon-only on the wide
-  // layout, where the label would not fit next to the total.
-  const addButton = compact ? (
-    <Button
-      startIcon={<AddIcon />}
-      onClick={addMaterial}
-      sx={{ whiteSpace: "nowrap" }}
-    >
-      Add material
-    </Button>
-  ) : (
-    <Tooltip title="Add material">
-      <IconButton aria-label="Add material" onClick={addMaterial}>
-        <AddIcon color="primary" />
-      </IconButton>
-    </Tooltip>
+  const addButton = (
+    <>
+      <Button
+        startIcon={<AddIcon />}
+        onClick={addMaterial}
+        sx={{ display: { xs: "inline-flex", sm: "none" }, whiteSpace: "nowrap" }}
+      >
+        Add material
+      </Button>
+      <Tooltip title="Add material">
+        <IconButton
+          aria-label="Add material"
+          onClick={addMaterial}
+          sx={{ display: { xs: "none", sm: "inline-flex" } }}
+        >
+          <AddIcon color="primary" />
+        </IconButton>
+      </Tooltip>
+    </>
+  );
+
+  const columnsMenu = (
+    <>
+      <Tooltip title="Columns">
+        <IconButton
+          aria-label="Columns"
+          aria-haspopup="true"
+          aria-expanded={columnsOpen ? true : undefined}
+          onClick={(event) => setColumnsAnchor(event.currentTarget)}
+        >
+          <SettingsIcon />
+        </IconButton>
+      </Tooltip>
+      <Menu
+        anchorEl={columnsAnchor}
+        open={columnsOpen}
+        onClose={(_event, reason) => {
+          if (reason === "backdropClick" || reason === "escapeKeyDown") {
+            setColumnsAnchor(null);
+          }
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <ListSubheader>Visible columns</ListSubheader>
+        {MATERIAL_COLUMNS.map(({ id, label }) => (
+          <MenuItem key={id} onClick={() => handleToggleColumn(id)}>
+            <ListItemIcon>
+              <Checkbox
+                edge="start"
+                checked={visibility[id]}
+                tabIndex={-1}
+                disableRipple
+                inputProps={{ "aria-labelledby": `column-${id}` }}
+              />
+            </ListItemIcon>
+            <ListItemText id={`column-${id}`}>{label}</ListItemText>
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
   );
 
   return (
@@ -308,28 +339,7 @@ export default function MaterialsList({
         subheader={address.trim() || undefined}
         titleTypographyProps={{ variant: "h6", component: "h1" }}
         subheaderTypographyProps={{ sx: { whiteSpace: "pre-line" } }}
-        action={
-          compact && allMaterials.length ? (
-            <Stack direction="row" spacing={0.5} alignItems="center">
-              <Button
-                startIcon={showDetails ? <UnfoldLessIcon /> : <UnfoldMoreIcon />}
-                onClick={() => setShowDetails((shown) => !shown)}
-                aria-pressed={showDetails}
-                sx={{ whiteSpace: "nowrap" }}
-              >
-                Details
-              </Button>
-              <Button
-                startIcon={<SwapVertIcon />}
-                onClick={(e) => setSortAnchor(e.currentTarget)}
-                aria-haspopup="true"
-                aria-expanded={Boolean(sortAnchor)}
-              >
-                Sort
-              </Button>
-            </Stack>
-          ) : null
-        }
+        action={columnsMenu}
       />
       <CardContent
         sx={{
@@ -344,8 +354,7 @@ export default function MaterialsList({
         {loading && !allMaterials.length ? (
           <MaterialsListSkeleton
             rows={skeletonCount}
-            compact={compact}
-            showDetails={showDetails}
+            visibility={visibility}
           />
         ) : !allMaterials.length ? (
           <Typography color="text.secondary">
@@ -363,17 +372,17 @@ export default function MaterialsList({
               items={allMaterials.map((m) => m.id)}
               strategy={verticalListSortingStrategy}
             >
-              <Stack spacing={compact ? 1 : 0.5}>
-                {compact ? null : (
-                  <Box sx={rowGridSx}>
-                    <span />
-                    <SortHeader
-                      label="Material"
-                      column="material"
-                      sort={sort}
-                      onSort={handleSort}
-                      name="material"
-                    />
+              <Stack spacing={0.5}>
+                <Box sx={rowGridSx(visibility)}>
+                  {visibility.sorting ? <span /> : null}
+                  <SortHeader
+                    label="Material"
+                    column="material"
+                    sort={sort}
+                    onSort={handleSort}
+                    name="material"
+                  />
+                  {visibility.quantity ? (
                     <SortHeader
                       label="Qty"
                       column="units"
@@ -381,6 +390,8 @@ export default function MaterialsList({
                       onSort={handleSort}
                       name="quantity"
                     />
+                  ) : null}
+                  {visibility.price ? (
                     <SortHeader
                       label="Unit £"
                       column="price"
@@ -388,6 +399,8 @@ export default function MaterialsList({
                       onSort={handleSort}
                       name="unit price"
                     />
+                  ) : null}
+                  {visibility.lineTotal ? (
                     <Typography
                       variant="caption"
                       color="text.secondary"
@@ -395,24 +408,20 @@ export default function MaterialsList({
                     >
                       Line
                     </Typography>
-                    <span />
-                  </Box>
-                )}
+                  ) : null}
+                  {visibility.delete ? <span /> : null}
+                </Box>
                 {allMaterials.map(
-                  ({ id, material, price, units }: MaterialsType, index) => (
+                  ({ id, material, price, units }: MaterialsType) => (
                     <SortableMaterialRow
                       key={id}
                       id={id}
                       material={material}
                       price={price}
                       units={units}
-                      compact={compact}
-                      showDetails={showDetails}
-                      canMoveUp={index > 0}
-                      canMoveDown={index < allMaterials.length - 1}
+                      visibility={visibility}
                       setAllMaterials={setAllMaterials}
                       onSavePrice={onSavePrice}
-                      onMove={handleMove}
                       onMaterialBlur={handleMaterialBlur}
                     />
                   ),
@@ -473,70 +482,29 @@ export default function MaterialsList({
           },
         }}
       >
-        {compact ? (
-          <>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 1,
-              }}
-            >
-              <Typography
-                variant="h6"
-                sx={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}
-              >
-                {totalLabel}
-              </Typography>
-              {addButton}
-            </Box>
-            {copyButtons}
-          </>
-        ) : (
-          <>
-            <Stack direction="row" spacing={1} alignItems="center">
-              {addButton}
-              {copyButtons}
-            </Stack>
-            <Typography
-              variant="subtitle1"
-              sx={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}
-            >
-              {totalLabel}
-            </Typography>
-          </>
-        )}
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          sx={{
+            width: { xs: "100%", sm: "auto" },
+            justifyContent: { xs: "space-between", sm: "flex-start" },
+          }}
+        >
+          {addButton}
+          {copyButtons}
+        </Stack>
+        <Typography
+          variant="subtitle1"
+          sx={{
+            fontWeight: 600,
+            fontVariantNumeric: "tabular-nums",
+            alignSelf: { xs: "flex-start", sm: "center" },
+          }}
+        >
+          {totalLabel}
+        </Typography>
       </CardActions>
-      <Menu
-        anchorEl={sortAnchor}
-        open={Boolean(sortAnchor)}
-        onClose={() => setSortAnchor(null)}
-      >
-        {SORT_OPTIONS.map(({ key, label }) => {
-          const active = sort?.key === key;
-          return (
-            <MenuItem
-              key={key}
-              selected={active}
-              onClick={() => {
-                handleSort(key);
-                setSortAnchor(null);
-              }}
-            >
-              {/* The icon slot is always present so the labels do not shift
-                  when the active option changes. */}
-              <ListItemIcon sx={{ minWidth: 36 }}>
-                {active ? <CheckIcon fontSize="small" /> : null}
-              </ListItemIcon>
-              <ListItemText
-                primary={label}
-                secondary={active ? directionLabel(sort.direction) : undefined}
-              />
-            </MenuItem>
-          );
-        })}
-      </Menu>
       <Snackbar
         open={Boolean(toast)}
         autoHideDuration={3000}

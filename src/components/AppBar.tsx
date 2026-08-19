@@ -6,6 +6,7 @@ import Tabs from "@mui/material/Tabs";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import { APP_BAR_ACTIONS_ID } from "./AppBarActions";
+import ThemeMenu from "./ThemeMenu";
 
 export default function AppBarMenu() {
   const { pathname } = useLocation();
@@ -60,6 +61,7 @@ export default function AppBarMenu() {
           <Tab label="VO" value="/vo" to="/vo" component={Link} />
         </Tabs>
         <Box sx={{ flexGrow: 1 }} />
+        <ThemeMenu />
         <Box
           id={APP_BAR_ACTIONS_ID}
           sx={{

@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ClearIcon from "@mui/icons-material/Clear";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import {
@@ -13,6 +11,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import type { ColumnVisibility, MaterialColumnId } from "../materialColumns";
 import { formatMoney, lineTotal } from "../money";
 import {
   formatNumericInput,
@@ -23,26 +22,35 @@ import { parseMaterialLine, parseQuantityPrefix } from "../parseMaterials";
 import { MaterialsType } from "../types";
 import { visuallyHidden } from "./visuallyHidden";
 
-/**
- * Wide layout: one row per material. The fixed columns total ~298px, which
- * leaves the name roughly 150px inside the 480px sidebar. Below `sm` the row
- * reflows into the two-line card built by `CompactLayout`, because those same
- * fixed columns left the name only ~36px on a phone.
- */
-export const rowGridSx = {
-  display: "grid",
-  gridTemplateColumns: "28px minmax(0, 1fr) 52px 80px 72px 36px",
-  columnGap: 0.75,
-  alignItems: "center",
-} as const;
+const COLUMN_WIDTHS: Record<MaterialColumnId, string> = {
+  sorting: "28px",
+  quantity: "52px",
+  price: "80px",
+  lineTotal: "72px",
+  delete: "36px",
+};
 
-/** Secondary controls: above the 24px WCAG floor, tighter than the 44px default. */
-const reorderButtonSx = {
-  minWidth: 36,
-  minHeight: 36,
-  width: 36,
-  height: 36,
-} as const;
+/**
+ * One row per material. Optional columns drop out of the template so the name
+ * field receives the leftover width — the same grid on phone and desktop.
+ */
+export function rowGridSx(visibility: ColumnVisibility) {
+  const columns = [
+    visibility.sorting ? COLUMN_WIDTHS.sorting : null,
+    "minmax(0, 1fr)",
+    visibility.quantity ? COLUMN_WIDTHS.quantity : null,
+    visibility.price ? COLUMN_WIDTHS.price : null,
+    visibility.lineTotal ? COLUMN_WIDTHS.lineTotal : null,
+    visibility.delete ? COLUMN_WIDTHS.delete : null,
+  ].filter((column): column is string => column !== null);
+
+  return {
+    display: "grid",
+    gridTemplateColumns: columns.join(" "),
+    columnGap: 0.75,
+    alignItems: "center",
+  } as const;
+}
 
 const numberInputSx = { fontVariantNumeric: "tabular-nums" } as const;
 
@@ -51,30 +59,16 @@ export default function SortableMaterialRow({
   material,
   price,
   units,
-  compact = false,
-  showDetails = true,
-  canMoveUp = false,
-  canMoveDown = false,
+  visibility,
   setAllMaterials,
   onSavePrice,
   onMaterialBlur,
-  onMove,
 }: {
   id: string;
   material: string;
   price: number;
   units: number;
-  /** Renders the two-line phone layout instead of the wide grid row. */
-  compact?: boolean;
-  /**
-   * Compact layout only. When false the quantity, unit price and line total
-   * line is left out entirely, so the list reads as one name per row. The
-   * fields are not rendered rather than hidden with CSS, which keeps them out
-   * of the tab order and out of a screen reader's way.
-   */
-  showDetails?: boolean;
-  canMoveUp?: boolean;
-  canMoveDown?: boolean;
+  visibility: ColumnVisibility;
   setAllMaterials: (
     value: MaterialsType[] | ((prev: MaterialsType[]) => MaterialsType[]),
   ) => void;
@@ -86,7 +80,6 @@ export default function SortableMaterialRow({
    * message was read before the updater had run, so it never appeared.
    */
   onMaterialBlur: (id: string) => void;
-  onMove?: (id: string, offset: number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id });
@@ -138,7 +131,6 @@ export default function SortableMaterialRow({
     }
   };
 
-  // Shared field props, so the wide and compact layouts cannot drift apart.
   const materialFieldProps = {
     value: material,
     onChange: (e: { target: { value: string } }) =>
@@ -158,8 +150,8 @@ export default function SortableMaterialRow({
     onBlur: () => setUnitsDraft(null),
     inputProps: {
       "aria-label": `Quantity for ${rowName}`,
-      // A text input with a decimal hint gives the compact numeric keypad and,
-      // unlike type="number", reports partially typed decimals back verbatim.
+      // A text input with a decimal hint gives the numeric keypad and, unlike
+      // type="number", reports partially typed decimals back verbatim.
       inputMode: "decimal" as const,
       style: { textAlign: "right" as const },
     },
@@ -177,114 +169,11 @@ export default function SortableMaterialRow({
     },
   };
 
-  const removeButton = (
-    <Tooltip title="Remove">
-      <IconButton
-        aria-label={`Remove ${rowName}`}
-        onClick={() => setAllMaterials((prev) => prev.filter((m) => m.id !== id))}
-      >
-        <ClearIcon fontSize="small" />
-      </IconButton>
-    </Tooltip>
-  );
-
-  if (compact) {
-    return (
-      <Box
-        ref={setNodeRef}
-        sx={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) auto",
-          gridTemplateAreas: showDetails
-            ? `"name actions" "fields fields"`
-            : `"name actions"`,
-          columnGap: 0.5,
-          rowGap: 1,
-          alignItems: "center",
-          p: 1,
-          border: 1,
-          borderColor: "divider",
-          borderRadius: 2,
-          bgcolor: "background.paper",
-        }}
-      >
-        <TextField
-          {...materialFieldProps}
-          placeholder="Material"
-          fullWidth
-          sx={{ gridArea: "name" }}
-        />
-        <Box sx={{ gridArea: "actions", display: "flex", alignItems: "center" }}>
-          {/* Up/down replace drag on the phone: dragging inside a scrolling
-              list is unreliable by touch and unreachable for screen readers. */}
-          <IconButton
-            aria-label={`Move ${rowName} up`}
-            disabled={!canMoveUp}
-            onClick={() => onMove?.(id, -1)}
-            sx={reorderButtonSx}
-          >
-            <ArrowUpwardIcon fontSize="small" />
-          </IconButton>
-          <IconButton
-            aria-label={`Move ${rowName} down`}
-            disabled={!canMoveDown}
-            onClick={() => onMove?.(id, 1)}
-            sx={reorderButtonSx}
-          >
-            <ArrowDownwardIcon fontSize="small" />
-          </IconButton>
-          {removeButton}
-        </Box>
-        {showDetails ? (
-          <Box
-            sx={{
-              gridArea: "fields",
-              display: "flex",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 1,
-            }}
-          >
-            <TextField
-              {...unitsFieldProps}
-              label="Qty"
-              InputLabelProps={{ shrink: true }}
-              sx={{ width: 72, "& input": numberInputSx }}
-            />
-            <TextField
-              {...priceFieldProps}
-              label="Unit £"
-              InputLabelProps={{ shrink: true }}
-              InputProps={{
-                startAdornment: <InputAdornment position="start">£</InputAdornment>,
-              }}
-              sx={{ width: 108, "& input": numberInputSx }}
-            />
-            <Typography
-              sx={{
-                flex: 1,
-                minWidth: 64,
-                textAlign: "right",
-                fontWeight: 700,
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              <Box component="span" sx={visuallyHidden}>
-                {`Line total for ${rowName}: `}
-              </Box>
-              {formatMoney(lineTotal(price, units))}
-            </Typography>
-          </Box>
-        ) : null}
-      </Box>
-    );
-  }
-
   return (
     <Box
       ref={setNodeRef}
       sx={{
-        ...rowGridSx,
+        ...rowGridSx(visibility),
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.4 : 1,
@@ -292,64 +181,81 @@ export default function SortableMaterialRow({
         position: "relative",
       }}
     >
-      <Tooltip title="Drag to reorder">
-        <Box
-          component="button"
-          type="button"
-          aria-label={`Reorder ${rowName}`}
-          {...attributes}
-          {...listeners}
+      {visibility.sorting ? (
+        <Tooltip title="Drag to reorder">
+          <Box
+            component="button"
+            type="button"
+            aria-label={`Reorder ${rowName}`}
+            {...attributes}
+            {...listeners}
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 28,
+              height: 28,
+              p: 0,
+              border: 0,
+              borderRadius: 1,
+              background: "none",
+              color: "text.secondary",
+              cursor: isDragging ? "grabbing" : "grab",
+              touchAction: "none",
+              "&:hover": { bgcolor: "action.hover" },
+            }}
+          >
+            <DragIndicatorIcon fontSize="small" />
+          </Box>
+        </Tooltip>
+      ) : null}
+      <TextField {...materialFieldProps} variant="standard" />
+      {visibility.quantity ? (
+        <TextField
+          {...unitsFieldProps}
+          variant="standard"
+          onFocus={(e) => e.target.select()}
+          sx={{ "& input": numberInputSx }}
+        />
+      ) : null}
+      {visibility.price ? (
+        <TextField
+          {...priceFieldProps}
+          variant="standard"
+          onFocus={(e) => e.target.select()}
+          InputProps={{
+            startAdornment: <InputAdornment position="start">£</InputAdornment>,
+          }}
+          sx={{ "& input": numberInputSx }}
+        />
+      ) : null}
+      {visibility.lineTotal ? (
+        <Typography
+          variant="body2"
           sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 28,
-            height: 28,
-            p: 0,
-            border: 0,
-            borderRadius: 1,
-            background: "none",
-            color: "text.secondary",
-            cursor: isDragging ? "grabbing" : "grab",
-            touchAction: "none",
-            "&:hover": { bgcolor: "action.hover" },
+            textAlign: "right",
+            fontVariantNumeric: "tabular-nums",
+            pr: 0.5,
           }}
         >
-          <DragIndicatorIcon fontSize="small" />
-        </Box>
-      </Tooltip>
-      <TextField {...materialFieldProps} variant="standard" />
-      <TextField
-        {...unitsFieldProps}
-        variant="standard"
-        onFocus={(e) => e.target.select()}
-        sx={{ "& input": numberInputSx }}
-      />
-      <TextField
-        {...priceFieldProps}
-        variant="standard"
-        onFocus={(e) => e.target.select()}
-        InputProps={{
-          startAdornment: <InputAdornment position="start">£</InputAdornment>,
-        }}
-        sx={{ "& input": numberInputSx }}
-      />
-      {/* Plain text, not a read-only input: an input here looked editable and
-          added a dead tab stop. */}
-      <Typography
-        variant="body2"
-        sx={{
-          textAlign: "right",
-          fontVariantNumeric: "tabular-nums",
-          pr: 0.5,
-        }}
-      >
-        <Box component="span" sx={visuallyHidden}>
-          {`Line total for ${rowName}: `}
-        </Box>
-        {formatMoney(lineTotal(price, units))}
-      </Typography>
-      {removeButton}
+          <Box component="span" sx={visuallyHidden}>
+            {`Line total for ${rowName}: `}
+          </Box>
+          {formatMoney(lineTotal(price, units))}
+        </Typography>
+      ) : null}
+      {visibility.delete ? (
+        <Tooltip title="Remove">
+          <IconButton
+            aria-label={`Remove ${rowName}`}
+            onClick={() =>
+              setAllMaterials((prev) => prev.filter((m) => m.id !== id))
+            }
+          >
+            <ClearIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      ) : null}
     </Box>
   );
 }

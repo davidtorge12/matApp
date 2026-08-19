@@ -4,6 +4,10 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CodesTable from "./CodesTable";
+import {
+  CODES_COLUMNS_KEY,
+  DEFAULT_CODE_COLUMN_VISIBILITY,
+} from "../codeColumns";
 import { CodeType } from "../types";
 
 /**
@@ -54,6 +58,7 @@ function Harness({
 
 beforeEach(() => {
   updateCodeMaterials.mockResolvedValue(undefined);
+  window.localStorage.clear();
 });
 
 describe("saving a materials edit", () => {
@@ -159,11 +164,99 @@ describe("rendering", () => {
     ).toBeDisabled();
   });
 
+  it("puts an icon-only copy control on compact cards, not a labelled button", () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = (query: string) =>
+      ({
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }) as MediaQueryList;
+
+    try {
+      render(
+        <Harness
+          initial={[code({ _id: "a1", code: "P100", materials: "2x screws" })]}
+        />,
+      );
+
+      expect(
+        screen.getByRole("button", { name: "Copy materials for P100" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Copy materials" }),
+      ).not.toBeInTheDocument();
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
   it("shows the empty state when there are no codes", () => {
     render(<Harness initial={[]} />);
 
     expect(
       screen.getByText("Upload a job file or wait for the latest codes."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("column visibility", () => {
+  it("shows a Columns control and the description column by default", () => {
+    render(
+      <Harness
+        initial={[
+          code({
+            _id: "a1",
+            code: "P100",
+            description: "Paint walls",
+            materials: "2x emulsion",
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Columns" })).toBeInTheDocument();
+    expect(screen.getByText("Paint walls")).toBeInTheDocument();
+    expect(screen.getByText("P100")).toBeInTheDocument();
+  });
+
+  it("hides the description column when Description is unchecked", async () => {
+    const user = userEvent.setup();
+    render(
+      <Harness
+        initial={[
+          code({ _id: "a1", code: "P100", description: "Paint walls" }),
+        ]}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Columns" }));
+    await user.click(screen.getByRole("menuitem", { name: "Description" }));
+
+    expect(screen.queryByText("Paint walls")).not.toBeInTheDocument();
+    expect(screen.getByText("P100")).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Description" })).toBeInTheDocument();
+  });
+
+  it("honours a stored description-off preference on first render", () => {
+    window.localStorage.setItem(
+      CODES_COLUMNS_KEY,
+      JSON.stringify({ ...DEFAULT_CODE_COLUMN_VISIBILITY, description: false }),
+    );
+    render(
+      <Harness
+        initial={[
+          code({ _id: "a1", code: "P100", description: "Paint walls" }),
+        ]}
+      />,
+    );
+
+    expect(screen.queryByText("Paint walls")).not.toBeInTheDocument();
+    expect(screen.getByText("P100")).toBeInTheDocument();
   });
 });

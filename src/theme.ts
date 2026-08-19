@@ -133,5 +133,3 @@ export function createAppTheme(mode: ThemeMode): Theme {
     },
   });
 }
-
-export default createAppTheme("light");

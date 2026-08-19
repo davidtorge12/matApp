@@ -2,8 +2,12 @@
 import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import MaterialsList from "./MaterialsList";
+import {
+  DEFAULT_COLUMN_VISIBILITY,
+  MATERIALS_COLUMNS_KEY,
+} from "../materialColumns";
 import { materialsTotal } from "../money";
 import { MaterialsType } from "../types";
 
@@ -212,5 +216,65 @@ describe("copying", () => {
     await user.click(screen.getByRole("button", { name: "Copy list" }));
 
     expect(await screen.findByText("Could not copy")).toBeInTheDocument();
+  });
+});
+
+describe("column visibility", () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
+  it("shows a Columns control and the desktop fields, not move-up buttons", () => {
+    render(
+      <Harness initial={[row({ id: "a", material: "screws", units: 1 })]} />,
+    );
+
+    expect(screen.getByRole("button", { name: "Columns" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Material name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Quantity for screws")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Move .+ up/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the quantity field when Quantity is unchecked, and keeps the name", async () => {
+    const user = userEvent.setup();
+    render(
+      <Harness initial={[row({ id: "a", material: "screws", units: 1 })]} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Columns" }));
+    await user.click(screen.getByRole("menuitem", { name: "Quantity" }));
+
+    expect(screen.queryByLabelText("Quantity for screws")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Material name")).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Quantity" })).toBeInTheDocument();
+  });
+
+  it("honours a stored quantity-off preference on first render", () => {
+    window.localStorage.setItem(
+      MATERIALS_COLUMNS_KEY,
+      JSON.stringify({ ...DEFAULT_COLUMN_VISIBILITY, quantity: false }),
+    );
+    render(
+      <Harness initial={[row({ id: "a", material: "screws", units: 1 })]} />,
+    );
+
+    expect(screen.queryByLabelText("Quantity for screws")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Material name")).toBeInTheDocument();
+  });
+
+  it("writes the toggled visibility to localStorage", async () => {
+    const user = userEvent.setup();
+    render(
+      <Harness initial={[row({ id: "a", material: "screws", units: 1 })]} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Columns" }));
+    await user.click(screen.getByRole("menuitem", { name: "Quantity" }));
+
+    expect(JSON.parse(window.localStorage.getItem(MATERIALS_COLUMNS_KEY)!)).toEqual(
+      { ...DEFAULT_COLUMN_VISIBILITY, quantity: false },
+    );
   });
 });

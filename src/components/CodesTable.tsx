@@ -1,10 +1,19 @@
+import { useState } from "react";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import SettingsIcon from "@mui/icons-material/Settings";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardHeader from "@mui/material/CardHeader";
+import Checkbox from "@mui/material/Checkbox";
 import Chip from "@mui/material/Chip";
+import IconButton from "@mui/material/IconButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import ListSubheader from "@mui/material/ListSubheader";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Table from "@mui/material/Table";
@@ -15,11 +24,19 @@ import TableHead from "@mui/material/TableHead";
 import TablePagination from "@mui/material/TablePagination";
 import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import CopyButton from "./CopyButton";
 import { updateCodeMaterials } from "../api";
+import {
+  CODE_COLUMNS,
+  readCodeColumnVisibility,
+  toggleCodeColumn,
+  writeCodeColumnVisibility,
+  type CodeColumnId,
+} from "../codeColumns";
 import { lastPageIndex, PAGE_SIZE, pageRows } from "../pagination";
 import { CodeType } from "../types";
 import { isWarningLine } from "../warningLine";
@@ -81,9 +98,15 @@ export default function CodesTable({
   // false initially, so a phone rendered the desktop table for one frame and then
   // reflowed into cards.
   const compact = useMediaQuery(theme.breakpoints.down("sm"), { noSsr: true });
-  const showDescription = useMediaQuery(theme.breakpoints.up(750), {
-    noSsr: true,
-  });
+  const [columnsAnchor, setColumnsAnchor] = useState<HTMLElement | null>(null);
+  const [visibility, setVisibility] = useState(readCodeColumnVisibility);
+  const columnsOpen = Boolean(columnsAnchor);
+
+  const handleToggleColumn = (id: CodeColumnId) => {
+    const next = toggleCodeColumn(visibility, id);
+    setVisibility(next);
+    writeCodeColumnVisibility(next);
+  };
 
   const saveMaterials = (row: CodeType, value: string) => {
     const materials = value.trim();
@@ -127,12 +150,55 @@ export default function CodesTable({
   const empty = !loading && !count;
   const lastPage = lastPageIndex(count);
 
+  const columnsMenu = (
+    <>
+      <Tooltip title="Columns">
+        <IconButton
+          aria-label="Columns"
+          aria-haspopup="true"
+          aria-expanded={columnsOpen ? true : undefined}
+          onClick={(event) => setColumnsAnchor(event.currentTarget)}
+        >
+          <SettingsIcon />
+        </IconButton>
+      </Tooltip>
+      <Menu
+        anchorEl={columnsAnchor}
+        open={columnsOpen}
+        onClose={(_event, reason) => {
+          if (reason === "backdropClick" || reason === "escapeKeyDown") {
+            setColumnsAnchor(null);
+          }
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <ListSubheader>Visible columns</ListSubheader>
+        {CODE_COLUMNS.map(({ id, label }) => (
+          <MenuItem key={id} onClick={() => handleToggleColumn(id)}>
+            <ListItemIcon>
+              <Checkbox
+                edge="start"
+                checked={visibility[id]}
+                tabIndex={-1}
+                disableRipple
+                inputProps={{ "aria-labelledby": `code-column-${id}` }}
+              />
+            </ListItemIcon>
+            <ListItemText id={`code-column-${id}`}>{label}</ListItemText>
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
+  );
+
   return (
     <Card variant="outlined" sx={{ width: "100%" }}>
       <CardHeader
         title="Job codes"
         subheader={empty ? undefined : pageSummary(page, count)}
         titleTypographyProps={{ variant: "h6", component: "h2" }}
+        action={columnsMenu}
       />
       {empty ? (
         <Typography color="text.secondary" sx={{ px: 3, pb: 3 }}>
@@ -158,19 +224,41 @@ export default function CodesTable({
                     <Box
                       key={row._id}
                       sx={{
+                        position: "relative",
                         border: 1,
                         borderColor: "divider",
                         borderRadius: 2,
                         p: 1.5,
+                        pr: visibility.copy ? 6 : 1.5,
                       }}
                     >
+                      {visibility.copy ? (
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            top: 4,
+                            right: 4,
+                          }}
+                        >
+                          <CopyButton
+                            text={row.materials}
+                            label={`Copy materials for ${row.code}`}
+                            disabled={!row.materials}
+                          />
+                        </Box>
+                      ) : null}
                       <Box
                         sx={{
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "space-between",
                           gap: 1,
-                          mb: row.description || row.comments ? 0.5 : 1,
+                          mb:
+                            (visibility.description && row.description) ||
+                            (visibility.comments && row.comments)
+                              ? 0.5
+                              : 1,
+                          pr: visibility.copy ? 1 : 0,
                         }}
                       >
                         <Typography
@@ -180,9 +268,11 @@ export default function CodesTable({
                         >
                           {row.code}
                         </Typography>
-                        <CommentsCell comments={row.comments} />
+                        {visibility.comments ? (
+                          <CommentsCell comments={row.comments} />
+                        ) : null}
                       </Box>
-                      {row.description ? (
+                      {visibility.description && row.description ? (
                         <Typography
                           variant="body2"
                           color="text.secondary"
@@ -191,21 +281,7 @@ export default function CodesTable({
                           {row.description}
                         </Typography>
                       ) : null}
-                      {materialsField(row, 6)}
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "flex-end",
-                          mt: 1,
-                        }}
-                      >
-                        <CopyButton
-                          text={row.materials}
-                          variant="button"
-                          label="Copy materials"
-                          disabled={!row.materials}
-                        />
-                      </Box>
+                      {visibility.materials ? materialsField(row, 6) : null}
                     </Box>
                   ))}
             </Stack>
@@ -229,20 +305,26 @@ export default function CodesTable({
                     <TableCell align="left">
                       <strong>Code</strong>
                     </TableCell>
-                    {showDescription ? (
+                    {visibility.description ? (
                       <TableCell>
                         <strong>Description</strong>
                       </TableCell>
                     ) : null}
-                    <TableCell align="center">
-                      <strong>Comments</strong>
-                    </TableCell>
-                    <TableCell width={280} align="center">
-                      <strong>Materials</strong>
-                    </TableCell>
-                    <TableCell align="center">
-                      <strong>Copy</strong>
-                    </TableCell>
+                    {visibility.comments ? (
+                      <TableCell align="center">
+                        <strong>Comments</strong>
+                      </TableCell>
+                    ) : null}
+                    {visibility.materials ? (
+                      <TableCell width={280} align="center">
+                        <strong>Materials</strong>
+                      </TableCell>
+                    ) : null}
+                    {visibility.copy ? (
+                      <TableCell align="center">
+                        <strong>Copy</strong>
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -252,29 +334,35 @@ export default function CodesTable({
                           <TableCell>
                             <Skeleton variant="text" width={72} />
                           </TableCell>
-                          {showDescription ? (
+                          {visibility.description ? (
                             <TableCell>
                               <Skeleton variant="text" width="80%" />
                             </TableCell>
                           ) : null}
-                          <TableCell>
-                            <Skeleton variant="text" width="60%" />
-                          </TableCell>
-                          <TableCell>
-                            <Skeleton
-                              variant="rectangular"
-                              height={56}
-                              sx={{ borderRadius: 1 }}
-                            />
-                          </TableCell>
-                          <TableCell align="center">
-                            <Skeleton
-                              variant="rectangular"
-                              width={36}
-                              height={36}
-                              sx={{ borderRadius: 1, mx: "auto" }}
-                            />
-                          </TableCell>
+                          {visibility.comments ? (
+                            <TableCell>
+                              <Skeleton variant="text" width="60%" />
+                            </TableCell>
+                          ) : null}
+                          {visibility.materials ? (
+                            <TableCell>
+                              <Skeleton
+                                variant="rectangular"
+                                height={56}
+                                sx={{ borderRadius: 1 }}
+                              />
+                            </TableCell>
+                          ) : null}
+                          {visibility.copy ? (
+                            <TableCell align="center">
+                              <Skeleton
+                                variant="rectangular"
+                                width={36}
+                                height={36}
+                                sx={{ borderRadius: 1, mx: "auto" }}
+                              />
+                            </TableCell>
+                          ) : null}
                         </TableRow>
                       ))
                     : rows.map((row) => (
@@ -287,26 +375,32 @@ export default function CodesTable({
                           <TableCell sx={{ fontWeight: 700 }} align="left">
                             {row.code}
                           </TableCell>
-                          {showDescription ? (
+                          {visibility.description ? (
                             <TableCell component="th" scope="row">
                               <Typography variant="body2" component="span">
                                 {row.description}
                               </Typography>
                             </TableCell>
                           ) : null}
-                          <TableCell align="center">
-                            <CommentsCell comments={row.comments} />
-                          </TableCell>
-                          <TableCell align="right">
-                            {materialsField(row, 4)}
-                          </TableCell>
-                          <TableCell align="center">
-                            <CopyButton
-                              text={row.materials}
-                              label={`Copy materials for ${row.code}`}
-                              disabled={!row.materials}
-                            />
-                          </TableCell>
+                          {visibility.comments ? (
+                            <TableCell align="center">
+                              <CommentsCell comments={row.comments} />
+                            </TableCell>
+                          ) : null}
+                          {visibility.materials ? (
+                            <TableCell align="right">
+                              {materialsField(row, 4)}
+                            </TableCell>
+                          ) : null}
+                          {visibility.copy ? (
+                            <TableCell align="center">
+                              <CopyButton
+                                text={row.materials}
+                                label={`Copy materials for ${row.code}`}
+                                disabled={!row.materials}
+                              />
+                            </TableCell>
+                          ) : null}
                         </TableRow>
                       ))}
                 </TableBody>
