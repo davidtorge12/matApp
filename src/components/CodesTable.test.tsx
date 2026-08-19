@@ -156,6 +156,25 @@ describe("rendering", () => {
     expect(screen.getByText("check access")).toBeInTheDocument();
   });
 
+  it("keeps each material on one line instead of wrapping", () => {
+    render(
+      <Harness
+        initial={[
+          code({
+            _id: "a1",
+            code: "P100",
+            materials: "2x extra-long galvanised timber screws",
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByLabelText("Materials for code P100")).toHaveStyle({
+      whiteSpace: "nowrap",
+      overflowX: "auto",
+    });
+  });
+
   it("disables copy for a code with no materials", () => {
     render(<Harness initial={[code({ _id: "a1", code: "P100" })]} />);
 

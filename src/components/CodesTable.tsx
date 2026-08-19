@@ -47,6 +47,10 @@ const SKELETON_ROWS = 8;
 const materialsInputProps = {
   autoCorrect: "off",
   spellCheck: false,
+  // Long names stay on one line; a new material is always a new line. Sideways
+  // scroll is better than wrapping, which looked like a second material.
+  wrap: "off",
+  style: { whiteSpace: "nowrap", overflowX: "auto" },
 } as const;
 
 function pageSummary(page: number, count: number): string {
