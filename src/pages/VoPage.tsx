@@ -2,6 +2,7 @@ import { useState } from "react";
 import Box from "@mui/material/Box";
 import VoTab from "../components/VoTab";
 import { getVOCodes } from "../api";
+import { serializeVo } from "../serializeVo";
 
 export default function VoPage() {
   const [vo, setVo] = useState("");
@@ -10,7 +11,7 @@ export default function VoPage() {
   const fetchVOCodes = async (voString: string) => {
     setError("");
     try {
-      const { vo: voWithCodes } = await getVOCodes(voString);
+      const { vo: voWithCodes } = await getVOCodes(serializeVo(voString));
       if (voWithCodes) {
         setVo(voWithCodes);
       }

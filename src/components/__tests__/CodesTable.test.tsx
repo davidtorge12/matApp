@@ -3,12 +3,14 @@ import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import CodesTable from "./CodesTable";
+import { ThemeProvider } from "@mui/material/styles";
+import CodesTable from "../CodesTable";
 import {
   CODES_COLUMNS_KEY,
   DEFAULT_CODE_COLUMN_VISIBILITY,
-} from "../codeColumns";
-import { CodeType } from "../types";
+} from "../../codeColumns";
+import { createAppTheme } from "../../theme";
+import { CodeType } from "../../types";
 
 /**
  * Covers saving a materials edit. A failed save used to be logged to the console
@@ -18,7 +20,7 @@ import { CodeType } from "../types";
 
 const updateCodeMaterials = vi.fn();
 
-vi.mock("../api", () => ({
+vi.mock("../../api", () => ({
   updateCodeMaterials: (...args: unknown[]) => updateCodeMaterials(...args),
 }));
 
@@ -54,6 +56,20 @@ function Harness({
       onError={onError}
     />
   );
+}
+
+function mockCompactViewport() {
+  window.matchMedia = (query: string) =>
+    ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList;
 }
 
 beforeEach(() => {
@@ -185,17 +201,7 @@ describe("rendering", () => {
 
   it("puts an icon-only copy control on compact cards, not a labelled button", () => {
     const originalMatchMedia = window.matchMedia;
-    window.matchMedia = (query: string) =>
-      ({
-        matches: true,
-        media: query,
-        onchange: null,
-        addListener: () => {},
-        removeListener: () => {},
-        addEventListener: () => {},
-        removeEventListener: () => {},
-        dispatchEvent: () => false,
-      }) as MediaQueryList;
+    mockCompactViewport();
 
     try {
       render(
@@ -210,6 +216,30 @@ describe("rendering", () => {
       expect(
         screen.queryByRole("button", { name: "Copy materials" }),
       ).not.toBeInTheDocument();
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  it("keeps compact card type at the desktop size", () => {
+    const originalMatchMedia = window.matchMedia;
+    mockCompactViewport();
+
+    try {
+      render(
+        <ThemeProvider theme={createAppTheme("light")}>
+          <Harness
+            initial={[code({ _id: "a1", code: "P100", materials: "2x screws" })]}
+          />
+        </ThemeProvider>,
+      );
+
+      expect(screen.getByLabelText("Materials for code P100")).toHaveStyle({
+        fontSize: "0.875rem",
+      });
+      expect(screen.getByRole("heading", { name: "P100" })).toHaveClass(
+        "MuiTypography-body2",
+      );
     } finally {
       window.matchMedia = originalMatchMedia;
     }

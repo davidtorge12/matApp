@@ -1,6 +1,5 @@
 import {
   Alert,
-  Box,
   Button,
   Card,
   CardActions,
@@ -9,6 +8,11 @@ import {
   TextField,
 } from "@mui/material";
 import CopyButton from "./CopyButton";
+import { serializeVo } from "../serializeVo";
+
+const SAMPLE_VO = `renew Bath panel
+Bonding coat in patch
+Bonding coat & Skimming`;
 
 export default function VoTab({
   vo,
@@ -21,11 +25,14 @@ export default function VoTab({
   onChange: (value: string) => void;
   onGetCodes: () => void;
 }) {
+  const applySerialize = () => onChange(serializeVo(vo));
+
   return (
     <Card variant="outlined" sx={{ width: "100%", maxWidth: 720, mx: "auto" }}>
       <CardHeader
         title="VO"
         titleTypographyProps={{ variant: "h6", component: "h1" }}
+        action={<CopyButton text={vo} label="Copy VO" disabled={!vo} />}
       />
       <CardContent>
         {error ? (
@@ -35,12 +42,23 @@ export default function VoTab({
         ) : null}
         <TextField
           multiline
-          placeholder={`Paste here the VO with form like:
-    x renew Bath panel
-    x Bonding coat in patch
-    x Bonding coat & Skimming
+          placeholder={`Paste here the VO list then press the Serialize button to automatically add x - in front of each work name:
+  Example:
+  ${SAMPLE_VO.split("\n").join("\n  ")}
 `}
-          helperText="Paste VO lines, then match SOR codes."
+          helperText={
+            <Button
+              onClick={applySerialize}
+              variant="text"
+              disabled={!vo.trim()}
+            >
+              Serialize
+            </Button>
+          }
+          FormHelperTextProps={{
+            component: "div",
+            sx: { display: "flex", justifyContent: "flex-end", mx: 0, mt: 0.5 },
+          }}
           value={vo}
           onChange={(e) => onChange(e.target.value)}
           // Ten rows fills a whole phone screen before the buttons come into
@@ -73,15 +91,25 @@ export default function VoTab({
           // order disagreeing with what is on screen.
           flexDirection: { xs: "column", sm: "row" },
           alignItems: { xs: "stretch", sm: "center" },
-          justifyContent: "space-between",
         }}
       >
-        <Button onClick={onGetCodes} variant="contained" disabled={!vo.trim()}>
+        <Button
+          onClick={() => {
+            applySerialize();
+            onGetCodes();
+          }}
+          variant="contained"
+          disabled={!vo.trim()}
+        >
           Match codes
         </Button>
-        <Box sx={{ display: "flex", justifyContent: "center" }}>
-          <CopyButton text={vo} variant="button" label="Copy VO" disabled={!vo} />
-        </Box>
+        <Button
+          onClick={() => onChange(SAMPLE_VO)}
+          variant="text"
+          sx={{ ml: { sm: "auto" } }}
+        >
+          Use sample
+        </Button>
       </CardActions>
     </Card>
   );

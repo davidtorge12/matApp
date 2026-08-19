@@ -249,8 +249,10 @@ export default function MaterialsList({
       size="small"
       disabled={!allMaterials.length}
       sx={{
-        width: { xs: "100%", sm: "auto" },
-        "& .MuiButton-root": { whiteSpace: "nowrap" },
+        "& .MuiButton-root": {
+          whiteSpace: "nowrap",
+          minHeight: "unset",
+        },
       }}
     >
       <Button onClick={() => void copy(false)}>Copy list</Button>
@@ -259,24 +261,17 @@ export default function MaterialsList({
   );
 
   const addButton = (
-    <>
-      <Button
-        startIcon={<AddIcon />}
+    <Tooltip title="Add material">
+      <IconButton
+        aria-label="Add material"
         onClick={addMaterial}
-        sx={{ display: { xs: "inline-flex", sm: "none" }, whiteSpace: "nowrap" }}
+        sx={{
+          "&&": { minWidth: 40, minHeight: 40 },
+        }}
       >
-        Add material
-      </Button>
-      <Tooltip title="Add material">
-        <IconButton
-          aria-label="Add material"
-          onClick={addMaterial}
-          sx={{ display: { xs: "none", sm: "inline-flex" } }}
-        >
-          <AddIcon color="primary" />
-        </IconButton>
-      </Tooltip>
-    </>
+        <AddIcon color="primary" />
+      </IconButton>
+    </Tooltip>
   );
 
   const columnsMenu = (
@@ -287,6 +282,7 @@ export default function MaterialsList({
           aria-haspopup="true"
           aria-expanded={columnsOpen ? true : undefined}
           onClick={(event) => setColumnsAnchor(event.currentTarget)}
+          sx={{ "&&": { minWidth: 40, minHeight: 40 } }}
         >
           <SettingsIcon />
         </IconButton>
@@ -344,7 +340,7 @@ export default function MaterialsList({
       <CardContent
         sx={{
           pt: 0,
-          px: { xs: 1, sm: 2 },
+          px: 2,
           flex: 1,
           overflow: { md: "auto" },
           // Stops a scroll gesture inside the list from chaining to the page.
@@ -465,8 +461,9 @@ export default function MaterialsList({
           pt: 1,
           flexShrink: 0,
           gap: 1,
-          flexDirection: { xs: "column", sm: "row" },
-          alignItems: { xs: "stretch", sm: "center" },
+          flexDirection: "row",
+          flexWrap: "wrap",
+          alignItems: "center",
           justifyContent: "space-between",
           // The running total and the copy actions are the point of the screen,
           // so on a phone they stay pinned instead of scrolling away.
@@ -486,10 +483,6 @@ export default function MaterialsList({
           direction="row"
           spacing={1}
           alignItems="center"
-          sx={{
-            width: { xs: "100%", sm: "auto" },
-            justifyContent: { xs: "space-between", sm: "flex-start" },
-          }}
         >
           {addButton}
           {copyButtons}
@@ -499,7 +492,6 @@ export default function MaterialsList({
           sx={{
             fontWeight: 600,
             fontVariantNumeric: "tabular-nums",
-            alignSelf: { xs: "flex-start", sm: "center" },
           }}
         >
           {totalLabel}

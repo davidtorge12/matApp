@@ -39,6 +39,7 @@ import {
 } from "../codeColumns";
 import { lastPageIndex, PAGE_SIZE, pageRows } from "../pagination";
 import { CodeType } from "../types";
+import { DESKTOP_INPUT_FONT_SIZE } from "../theme";
 import { isWarningLine } from "../warningLine";
 
 const SKELETON_ROWS = 8;
@@ -50,7 +51,11 @@ const materialsInputProps = {
   // Long names stay on one line; a new material is always a new line. Sideways
   // scroll is better than wrapping, which looked like a second material.
   wrap: "off",
-  style: { whiteSpace: "nowrap", overflowX: "auto" },
+  style: {
+    whiteSpace: "nowrap",
+    overflowX: "auto",
+    fontSize: DESKTOP_INPUT_FONT_SIZE,
+  },
 } as const;
 
 function pageSummary(page: number, count: number): string {
@@ -132,10 +137,10 @@ export default function CodesTable({
   };
 
   /** One materials editor, shared by the table and the phone cards. */
-  const materialsField = (row: CodeType, maxRows: number) => (
+  const materialsField = (row: CodeType, maxRows: number, minRows = 2) => (
     <TextField
       multiline
-      minRows={2}
+      minRows={minRows}
       maxRows={maxRows}
       fullWidth
       placeholder="Add materials"
@@ -162,6 +167,7 @@ export default function CodesTable({
           aria-haspopup="true"
           aria-expanded={columnsOpen ? true : undefined}
           onClick={(event) => setColumnsAnchor(event.currentTarget)}
+          sx={{ "&&": { minWidth: 40, minHeight: 40 } }}
         >
           <SettingsIcon />
         </IconButton>
@@ -214,13 +220,13 @@ export default function CodesTable({
             /* Stacked cards rather than a table inside its own scroll box: a
                nested scroller wrapped around editable text is awkward by touch,
                and the table columns cannot fit a phone. */
-            <Stack spacing={1} sx={{ px: 1, pb: 1 }}>
+            <Stack spacing={1} sx={{ px: 2, pb: 1 }}>
               {loading
                 ? Array.from({ length: SKELETON_ROWS }, (_, i) => (
                     <Skeleton
                       key={`skeleton-${i}`}
                       variant="rectangular"
-                      height={160}
+                      height={96}
                       sx={{ borderRadius: 2 }}
                     />
                   ))
@@ -232,8 +238,8 @@ export default function CodesTable({
                         border: 1,
                         borderColor: "divider",
                         borderRadius: 2,
-                        p: 1.5,
-                        pr: visibility.copy ? 6 : 1.5,
+                        p: 1,
+                        pr: visibility.copy ? 5 : 1,
                       }}
                     >
                       {visibility.copy ? (
@@ -266,7 +272,7 @@ export default function CodesTable({
                         }}
                       >
                         <Typography
-                          variant="subtitle1"
+                          variant="body2"
                           component="h3"
                           sx={{ fontWeight: 700 }}
                         >
@@ -285,7 +291,7 @@ export default function CodesTable({
                           {row.description}
                         </Typography>
                       ) : null}
-                      {visibility.materials ? materialsField(row, 6) : null}
+                      {visibility.materials ? materialsField(row, 4, 1) : null}
                     </Box>
                   ))}
             </Stack>
@@ -412,8 +418,6 @@ export default function CodesTable({
             </TableContainer>
           )}
           {loading && !count ? null : compact ? (
-            /* TablePagination's controls are too small and too cramped to hit
-               reliably with a thumb. */
             <Box
               sx={{
                 display: "flex",
@@ -428,9 +432,11 @@ export default function CodesTable({
               }}
             >
               <Button
+                size="small"
                 startIcon={<ChevronLeftIcon />}
                 disabled={page <= 0}
                 onClick={() => onPageChange(page - 1)}
+                sx={{ "&&": { minHeight: "unset" } }}
               >
                 Previous
               </Button>
@@ -438,9 +444,11 @@ export default function CodesTable({
                 {pageSummary(page, count)}
               </Typography>
               <Button
+                size="small"
                 endIcon={<ChevronRightIcon />}
                 disabled={page >= lastPage}
                 onClick={() => onPageChange(page + 1)}
+                sx={{ "&&": { minHeight: "unset" } }}
               >
                 Next
               </Button>

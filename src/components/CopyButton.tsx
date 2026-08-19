@@ -56,6 +56,9 @@ export default function CopyButton({
               color="primary"
               onClick={onCopy}
               aria-label={label || "Copy"}
+              sx={{
+                "&&": { minWidth: 36, minHeight: 36, width: 36, height: 36 },
+              }}
             >
               <ContentCopyIcon fontSize="small" />
             </IconButton>

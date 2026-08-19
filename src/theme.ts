@@ -14,7 +14,7 @@ const TOUCH_TARGET = 44;
  * inputs stay at 1rem on small screens and only tighten up on wider ones.
  */
 const MOBILE_INPUT_FONT_SIZE = "1rem";
-const DESKTOP_INPUT_FONT_SIZE = "0.875rem";
+export const DESKTOP_INPUT_FONT_SIZE = "0.875rem";
 
 const lightPalette = {
   // #1565c0 clears 4.5:1 on white; the previous #1976d2 sat at ~4.6:1 only

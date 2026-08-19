@@ -20,6 +20,7 @@ import {
 } from "../numericInput";
 import { parseMaterialLine, parseQuantityPrefix } from "../parseMaterials";
 import { MaterialsType } from "../types";
+import { DESKTOP_INPUT_FONT_SIZE } from "../theme";
 import { visuallyHidden } from "./visuallyHidden";
 
 const COLUMN_WIDTHS: Record<MaterialColumnId, string> = {
@@ -53,6 +54,10 @@ export function rowGridSx(visibility: ColumnVisibility) {
 }
 
 const numberInputSx = { fontVariantNumeric: "tabular-nums" } as const;
+
+// The theme bumps inputs to 16px below `sm` so phones don't zoom on focus.
+// This list is a dense grid; keep the desktop size so more rows fit.
+const compactInputStyle = { fontSize: DESKTOP_INPUT_FONT_SIZE } as const;
 
 export default function SortableMaterialRow({
   id,
@@ -141,6 +146,7 @@ export default function SortableMaterialRow({
       // Autocorrect mangles trade terms and sizes such as "PTFE" or "25kg".
       autoCorrect: "off",
       spellCheck: false,
+      style: compactInputStyle,
     },
   };
 
@@ -153,7 +159,7 @@ export default function SortableMaterialRow({
       // A text input with a decimal hint gives the numeric keypad and, unlike
       // type="number", reports partially typed decimals back verbatim.
       inputMode: "decimal" as const,
-      style: { textAlign: "right" as const },
+      style: { textAlign: "right" as const, ...compactInputStyle },
     },
   };
 
@@ -165,7 +171,7 @@ export default function SortableMaterialRow({
     inputProps: {
       "aria-label": `Unit price for ${rowName}`,
       inputMode: "decimal" as const,
-      style: { textAlign: "right" as const },
+      style: { textAlign: "right" as const, ...compactInputStyle },
     },
   };
 
@@ -251,6 +257,11 @@ export default function SortableMaterialRow({
             onClick={() =>
               setAllMaterials((prev) => prev.filter((m) => m.id !== id))
             }
+            sx={{
+              // Beats the theme's 44px touch-target below `sm`, which made
+              // every row taller at the same breakpoint that hides "Mat App".
+              "&&": { minWidth: 36, minHeight: 36, width: 36, height: 36 },
+            }}
           >
             <ClearIcon fontSize="small" />
           </IconButton>

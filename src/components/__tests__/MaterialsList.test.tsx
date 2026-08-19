@@ -3,13 +3,15 @@ import { useState } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import MaterialsList from "./MaterialsList";
+import { ThemeProvider } from "@mui/material/styles";
+import MaterialsList from "../MaterialsList";
 import {
   DEFAULT_COLUMN_VISIBILITY,
   MATERIALS_COLUMNS_KEY,
-} from "../materialColumns";
-import { materialsTotal } from "../money";
-import { MaterialsType } from "../types";
+} from "../../materialColumns";
+import { materialsTotal } from "../../money";
+import { createAppTheme } from "../../theme";
+import { MaterialsType } from "../../types";
 
 /**
  * Regression cover for the interaction bugs in the materials list. Each of these
@@ -276,5 +278,33 @@ describe("column visibility", () => {
     expect(JSON.parse(window.localStorage.getItem(MATERIALS_COLUMNS_KEY)!)).toEqual(
       { ...DEFAULT_COLUMN_VISIBILITY, quantity: false },
     );
+  });
+});
+
+describe("compact type on a narrow viewport", () => {
+  function renderList() {
+    render(
+      <ThemeProvider theme={createAppTheme("light")}>
+        <Harness
+          initial={[row({ id: "a", material: "screws", units: 6, price: 1.5 })]}
+        />
+      </ThemeProvider>,
+    );
+  }
+
+  it("keeps material fields at the desktop input size", () => {
+    renderList();
+
+    const compact = { fontSize: "0.875rem" };
+    expect(screen.getByLabelText("Material name")).toHaveStyle(compact);
+    expect(screen.getByLabelText("Quantity for screws")).toHaveStyle(compact);
+    expect(screen.getByLabelText("Unit price for screws")).toHaveStyle(compact);
+  });
+
+  it("keeps the compact add icon instead of a labelled button", () => {
+    renderList();
+
+    expect(screen.getByRole("button", { name: "Add material" })).toBeInTheDocument();
+    expect(screen.queryByText("Add material")).not.toBeInTheDocument();
   });
 });
