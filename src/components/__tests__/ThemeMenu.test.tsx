@@ -3,9 +3,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "@mui/material/styles";
-import ThemeMenu from "./ThemeMenu";
-import { ThemePreferenceContext } from "../ThemePreferenceContext";
-import { createAppTheme } from "../theme";
+import ThemeMenu from "../ThemeMenu";
+import { ThemePreferenceContext } from "../../ThemePreferenceContext";
+import { createAppTheme } from "../../theme";
 
 function renderToggle(
   preference: "light" | "dark" = "light",

@@ -2,8 +2,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import UploadButton from "./UploadButton";
-import { CodeType } from "../types";
+import UploadButton from "../UploadButton";
+import { CodeType } from "../../types";
 
 /**
  * Covers the upload flow end to end with the spreadsheet reader and the API mocked.
@@ -21,7 +21,7 @@ vi.mock("read-excel-file", () => ({
   readSheetNames: (...args: unknown[]) => readSheetNames(...args),
 }));
 
-vi.mock("../api", () => ({
+vi.mock("../../api", () => ({
   upsertCodes: (...args: unknown[]) => upsertCodes(...args),
 }));
 

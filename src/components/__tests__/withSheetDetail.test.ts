@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { withSheetDetail } from "./UploadButton";
-import { JobRow } from "../parseJobFile";
-import { CodeType } from "../types";
+import { withSheetDetail } from "../UploadButton";
+import { JobRow } from "../../parseJobFile";
+import { CodeType } from "../../types";
 
 function saved(code: string, description = ""): CodeType {
   return {
