@@ -24,6 +24,7 @@ describe("AppBarMenu", () => {
   it("keeps page tabs and the theme toggle on the first row", () => {
     renderBar();
 
+    expect(screen.getByRole("link", { name: "Mat App home" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Materials" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "VO" })).toBeInTheDocument();
     expect(

@@ -198,9 +198,9 @@ describe("uploading a job file", () => {
 
     try {
       renderButton();
-      expect(
-        screen.getByRole("button", { name: "Upload" }),
-      ).not.toHaveTextContent("Upload");
+      expect(screen.getByRole("button", { name: "Upload" })).not.toHaveTextContent(
+        "Upload",
+      );
     } finally {
       window.matchMedia = originalMatchMedia;
     }

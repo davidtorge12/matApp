@@ -6,6 +6,7 @@ import Tabs from "@mui/material/Tabs";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import { APP_BAR_ACTIONS_ID, APP_BAR_CHIP_ID } from "./AppBarActions";
+import AppLogo from "./AppLogo";
 import ThemeMenu from "./ThemeMenu";
 
 export default function AppBarMenu() {
@@ -32,22 +33,33 @@ export default function AppBarMenu() {
           flexWrap: "nowrap",
         }}
       >
-        <Typography
-          variant="h6"
+        <Box
           component={Link}
           to="/"
+          aria-label="Mat App home"
           sx={{
-            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
             color: "inherit",
             textDecoration: "none",
             flexShrink: 0,
-            // The Materials tab already goes home, so the wordmark gives up its
-            // space on narrow screens.
-            display: { xs: "none", md: "block" },
           }}
         >
-          Mat App
-        </Typography>
+          <AppLogo size={28} />
+          <Typography
+            variant="h6"
+            component="span"
+            sx={{
+              fontWeight: 600,
+              // The Materials tab already goes home, so the wordmark gives up its
+              // space on narrow screens. The logo stays.
+              display: { xs: "none", md: "block" },
+            }}
+          >
+            Mat App
+          </Typography>
+        </Box>
         <Tabs
           value={current}
           aria-label="App pages"
