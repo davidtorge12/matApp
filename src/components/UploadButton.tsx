@@ -1,7 +1,9 @@
 import { ChangeEvent, useRef, useState } from "react";
-import { Button, Chip } from "@mui/material";
+import { Button, Chip, IconButton, Tooltip } from "@mui/material";
 import CancelIcon from "@mui/icons-material/Cancel";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
 import readFile, { readSheetNames } from "read-excel-file";
 import { JobCodeUpload, upsertCodes } from "../api";
 import { JobRow, parseJobSheet, pickSheetName } from "../parseJobFile";
@@ -35,30 +37,42 @@ export function withSheetDetail(saved: CodeType[], jobRows: JobRow[]): CodeType[
   });
 }
 
+export function JobFileChip({
+  label,
+  onClear,
+}: {
+  label: string;
+  onClear: () => void;
+}) {
+  return (
+    <Chip
+      label={label}
+      title={label}
+      onDelete={onClear}
+      deleteIcon={<CancelIcon titleAccess={`Clear ${label}`} />}
+      sx={{ maxWidth: { xs: "100%", sm: 360 } }}
+    />
+  );
+}
+
 export default function UploadButton({
   onData,
   onStart,
   onError,
   onAddress,
-  fileName: fileNameProp,
   onFileName,
 }: {
   onData: (data: CodeType[]) => void;
   onStart: () => void;
   onError: (message: string) => void;
   onAddress: (address: string) => void;
-  fileName?: string;
   onFileName?: (name: string) => void;
 }) {
-  const [internalName, setInternalName] = useState("");
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const fileName = fileNameProp ?? internalName;
-
-  const assignFileName = (name: string) => {
-    setInternalName(name);
-    onFileName?.(name);
-  };
+  const theme = useTheme();
+  // Phone: icon only. From `sm` up there is room for the Upload label.
+  const compact = useMediaQuery(theme.breakpoints.down("sm"), { noSsr: true });
 
   const upload = async (rows: JobRow[]) => {
     const saved: CodeType[] = [];
@@ -88,7 +102,7 @@ export default function UploadButton({
       const data = await readFile(file, { sheet: pickSheetName(sheets) });
       const { address, rows } = parseJobSheet(sheets, data as unknown[][]);
 
-      assignFileName(file.name);
+      onFileName?.(file.name);
       onAddress(address ? `Address: \n${address}\n\n` : "");
 
       if (!rows.length) {
@@ -119,44 +133,48 @@ export default function UploadButton({
     }
   };
 
-  const onClear = () => {
-    assignFileName("");
-    onAddress("");
-    onData([]);
-    if (inputRef.current) {
-      inputRef.current.value = "";
-    }
-  };
+  const uploadLabel = busy ? "Reading…" : "Upload";
+  const fileInput = (
+    <input
+      ref={inputRef}
+      onChange={onChange}
+      hidden
+      // The MIME types matter on iOS: with only the extensions listed, the
+      // Files picker greys spreadsheets out.
+      accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12"
+      type="file"
+    />
+  );
+
+  if (compact) {
+    return (
+      <Tooltip title={uploadLabel}>
+        <span>
+          <IconButton
+            component="label"
+            disabled={busy}
+            aria-label={uploadLabel}
+            sx={{ flexShrink: 0 }}
+          >
+            <UploadFileIcon />
+            {fileInput}
+          </IconButton>
+        </span>
+      </Tooltip>
+    );
+  }
 
   return (
-    <>
-      {fileName ? (
-        <Chip
-          label={fileName}
-          onDelete={onClear}
-          deleteIcon={<CancelIcon titleAccess={`Clear ${fileName}`} />}
-          sx={{ maxWidth: { xs: 132, sm: 220 } }}
-        />
-      ) : null}
-      <Button
-        variant="outlined"
-        color="primary"
-        component="label"
-        disabled={busy}
-        startIcon={<UploadFileIcon />}
-        sx={{ flexShrink: 0 }}
-      >
-        {busy ? "Reading…" : "Upload"}
-        <input
-          ref={inputRef}
-          onChange={onChange}
-          hidden
-          // The MIME types matter on iOS: with only the extensions listed, the
-          // Files picker greys spreadsheets out.
-          accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12"
-          type="file"
-        />
-      </Button>
-    </>
+    <Button
+      variant="outlined"
+      color="primary"
+      component="label"
+      disabled={busy}
+      startIcon={<UploadFileIcon />}
+      sx={{ flexShrink: 0 }}
+    >
+      {uploadLabel}
+      {fileInput}
+    </Button>
   );
 }

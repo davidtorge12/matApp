@@ -2,7 +2,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import UploadButton from "../UploadButton";
+import UploadButton, { JobFileChip } from "../UploadButton";
 import { CodeType } from "../../types";
 
 /**
@@ -174,20 +174,49 @@ describe("uploading a job file", () => {
     expect(onData.mock.lastCall?.[0]).toHaveLength(120);
   });
 
-  it("shows the file name and clears it on demand", async () => {
+  it("renders a labelled upload button from sm up", () => {
+    renderButton();
+
+    expect(screen.getByRole("button", { name: "Upload" })).toHaveTextContent(
+      "Upload",
+    );
+  });
+
+  it("renders upload as an icon button below sm", () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = (query: string) =>
+      ({
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => false,
+      }) as MediaQueryList;
+
+    try {
+      renderButton();
+      expect(
+        screen.getByRole("button", { name: "Upload" }),
+      ).not.toHaveTextContent("Upload");
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+});
+
+describe("JobFileChip", () => {
+  it("shows the job title and clears it on demand", async () => {
     const user = userEvent.setup();
-    readFile.mockResolvedValue(sheetWith(1));
-    const { onData, onAddress, input } = renderButton();
+    const onClear = vi.fn();
+    render(<JobFileChip label="12 Test Street" onClear={onClear} />);
 
-    await user.upload(input, file("void-42.xlsx"));
-    expect(await screen.findByText("void-42.xlsx")).toBeInTheDocument();
+    expect(screen.getByText("12 Test Street")).toBeInTheDocument();
 
-    // MUI renders a Chip's delete affordance as an svg with a <title>, not a
-    // button; the chip root itself is the button, and Backspace deletes.
-    await user.click(screen.getByRole("img", { name: "Clear void-42.xlsx" }));
+    await user.click(screen.getByRole("img", { name: "Clear 12 Test Street" }));
 
-    expect(screen.queryByText("void-42.xlsx")).not.toBeInTheDocument();
-    expect(onData).toHaveBeenLastCalledWith([]);
-    expect(onAddress).toHaveBeenLastCalledWith("");
+    expect(onClear).toHaveBeenCalled();
   });
 });

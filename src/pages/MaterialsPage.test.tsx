@@ -24,14 +24,17 @@ vi.mock("../api", () => ({
   updateCodeMaterials: vi.fn().mockResolvedValue(undefined),
 }));
 
-// AppBarActions portals into an element the real AppBar renders, which this page
+// AppBarActions portals into elements the real AppBar renders, which this page
 // does not include.
 beforeEach(() => {
   window.localStorage.clear();
   getMaterialNames.mockResolvedValue({ items: [] });
-  const slot = document.createElement("div");
-  slot.id = "app-bar-actions";
-  document.body.append(slot);
+  const actions = document.createElement("div");
+  actions.id = "app-bar-actions";
+  document.body.append(actions);
+  const chip = document.createElement("div");
+  chip.id = "app-bar-chip";
+  document.body.append(chip);
 });
 
 function code(
@@ -124,7 +127,9 @@ describe("MaterialsPage", () => {
     render(<MaterialsPage />);
 
     expect(await screen.findByText("P100")).toBeInTheDocument();
-    expect(screen.getByText("12-test-street.xlsx")).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "Clear 12 Test Street" }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Quantity for screws")).toHaveValue("2");
     expect(screen.getByLabelText("Quantity for tape")).toHaveValue("1");
     expect(getLatestCodes).not.toHaveBeenCalled();
@@ -187,6 +192,39 @@ describe("MaterialsPage", () => {
     expect(await screen.findByText("P200")).toBeInTheDocument();
     expect(screen.queryByText("P100")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Quantity for blade")).toHaveValue("1");
-    expect(screen.getByText("second.xlsx")).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "Clear 8 Park Lane" }),
+    ).toBeInTheDocument();
+  });
+
+  it("clears the job chip from below the bar", async () => {
+    const user = userEvent.setup();
+    getLatestCodes.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+    });
+    writeSavedJobs([
+      {
+        id: "job-1",
+        fileName: "first.xlsx",
+        address: "Address: \n12 Test Street\n\n",
+        savedAt: "2026-08-19T12:00:00.000Z",
+        codes: [code({ _id: "1", code: "P100", materials: "2x screws" })],
+        materials: [{ id: "m1", material: "screws", units: 2, price: 1.5 }],
+      },
+    ]);
+
+    render(<MaterialsPage />);
+    expect(
+      await screen.findByRole("img", { name: "Clear 12 Test Street" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("img", { name: "Clear 12 Test Street" }));
+
+    expect(
+      screen.queryByRole("img", { name: "Clear 12 Test Street" }),
+    ).not.toBeInTheDocument();
   });
 });

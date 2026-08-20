@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import AppBarActions from "../components/AppBarActions";
+import AppBarActions, { APP_BAR_CHIP_ID } from "../components/AppBarActions";
 import CodesTable from "../components/CodesTable";
 import MaterialsList from "../components/MaterialsList";
 import SavedJobsMenu from "../components/SavedJobsMenu";
-import UploadButton from "../components/UploadButton";
+import UploadButton, { JobFileChip } from "../components/UploadButton";
 import {
   getLatestCodes,
   getMaterialNames,
@@ -16,6 +16,7 @@ import { newId } from "../id";
 import { materialsTotal } from "../money";
 import { aggregateMaterials } from "../parseMaterials";
 import {
+  jobLabel,
   readSavedJobs,
   upsertSavedJob,
   writeSavedJobs,
@@ -239,17 +240,22 @@ export default function MaterialsPage() {
     }
   }, []);
 
+  const clearJob = useCallback(() => {
+    setAddress("");
+    onUploadData([]);
+  }, [onUploadData]);
+
   return (
     <Box
       sx={{
         p: { xs: 1.5, md: 3 },
+        px: { xs: 0.5, md: 3 },
         pb: { xs: "calc(12px + env(safe-area-inset-bottom))", md: 3 },
       }}
     >
       <AppBarActions>
         <SavedJobsMenu currentId={jobId} onSelect={applyJob} />
         <UploadButton
-          fileName={fileName}
           onFileName={setFileName}
           onData={onUploadData}
           onStart={onUploadStart}
@@ -257,6 +263,11 @@ export default function MaterialsPage() {
           onAddress={setAddress}
         />
       </AppBarActions>
+      {fileName ? (
+        <AppBarActions slotId={APP_BAR_CHIP_ID}>
+          <JobFileChip label={jobLabel({ fileName, address })} onClear={clearJob} />
+        </AppBarActions>
+      ) : null}
       <Box sx={{ maxWidth: 1600, mx: "auto" }}>
         {error ? (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError("")}>

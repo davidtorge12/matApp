@@ -5,7 +5,7 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
-import { APP_BAR_ACTIONS_ID } from "./AppBarActions";
+import { APP_BAR_ACTIONS_ID, APP_BAR_CHIP_ID } from "./AppBarActions";
 import ThemeMenu from "./ThemeMenu";
 
 export default function AppBarMenu() {
@@ -26,11 +26,9 @@ export default function AppBarMenu() {
     >
       <Toolbar
         sx={{
-          gap: { xs: 1, sm: 2 },
-          minHeight: { xs: 56, sm: 64 },
-          px: { xs: 1.5, sm: 3 },
-          // Wrapping turned this sticky bar into two or three rows on a phone,
-          // permanently eating vertical space.
+          gap: { xs: 0.5, md: 2 },
+          minHeight: { xs: 56, md: 64 },
+          px: { xs: 1.5, md: 3 },
           flexWrap: "nowrap",
         }}
       >
@@ -45,7 +43,7 @@ export default function AppBarMenu() {
             flexShrink: 0,
             // The Materials tab already goes home, so the wordmark gives up its
             // space on narrow screens.
-            display: { xs: "none", sm: "block" },
+            display: { xs: "none", md: "block" },
           }}
         >
           Mat App
@@ -68,13 +66,26 @@ export default function AppBarMenu() {
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-end",
-            gap: 1,
+            gap: 0.5,
             minHeight: 32,
-            // Lets the file name chip shrink instead of pushing the bar wider.
             minWidth: 0,
+            flexShrink: 0,
+            "&:empty": { display: "none" },
           }}
         />
       </Toolbar>
+      <Box
+        id={APP_BAR_CHIP_ID}
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          px: 2,
+          py: 0.75,
+          borderTop: 1,
+          borderColor: "divider",
+          "&:empty": { display: "none" },
+        }}
+      />
     </AppBar>
   );
 }
