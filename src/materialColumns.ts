@@ -8,9 +8,16 @@ export const MATERIAL_COLUMNS = [
   { id: "delete", label: "Delete" },
 ] as const;
 
-export type MaterialColumnId = (typeof MATERIAL_COLUMNS)[number]["id"];
+export const MATERIAL_SETTINGS = [
+  { id: "search", label: "Search" },
+] as const;
 
-export type ColumnVisibility = Record<MaterialColumnId, boolean>;
+export type MaterialColumnId = (typeof MATERIAL_COLUMNS)[number]["id"];
+export type MaterialSettingId =
+  | MaterialColumnId
+  | (typeof MATERIAL_SETTINGS)[number]["id"];
+
+export type ColumnVisibility = Record<MaterialSettingId, boolean>;
 
 export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   sorting: true,
@@ -18,7 +25,10 @@ export const DEFAULT_COLUMN_VISIBILITY: ColumnVisibility = {
   price: true,
   lineTotal: true,
   delete: true,
+  search: true,
 };
+
+const VISIBILITY_KEYS = [...MATERIAL_COLUMNS, ...MATERIAL_SETTINGS];
 
 export function parseColumnVisibility(raw: unknown): ColumnVisibility {
   if (!raw || typeof raw !== "object") {
@@ -26,10 +36,10 @@ export function parseColumnVisibility(raw: unknown): ColumnVisibility {
   }
 
   const next = { ...DEFAULT_COLUMN_VISIBILITY };
-  for (const column of MATERIAL_COLUMNS) {
-    const value = (raw as Record<string, unknown>)[column.id];
+  for (const setting of VISIBILITY_KEYS) {
+    const value = (raw as Record<string, unknown>)[setting.id];
     if (typeof value === "boolean") {
-      next[column.id] = value;
+      next[setting.id] = value;
     }
   }
   return next;
@@ -37,7 +47,7 @@ export function parseColumnVisibility(raw: unknown): ColumnVisibility {
 
 export function toggleColumn(
   current: ColumnVisibility,
-  id: MaterialColumnId,
+  id: MaterialSettingId,
 ): ColumnVisibility {
   return { ...current, [id]: !current[id] };
 }

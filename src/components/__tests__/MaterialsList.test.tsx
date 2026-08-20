@@ -292,6 +292,75 @@ describe("column visibility", () => {
   });
 });
 
+describe("searching materials", () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
+  const items = [
+    row({ id: "a", material: "screws", units: 12 }),
+    row({ id: "b", material: "white silicone", units: 1 }),
+    row({ id: "c", material: "Emulsion paint", units: 2 }),
+  ];
+
+  it("filters the list as the search is typed", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={items} />);
+
+    await user.type(screen.getByLabelText("Search materials"), "silicone");
+
+    expect(screen.getByLabelText("Material name")).toHaveValue("white silicone");
+    expect(screen.queryByDisplayValue("screws")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Emulsion paint")).not.toBeInTheDocument();
+  });
+
+  it("says when nothing matches", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={items} />);
+
+    await user.type(screen.getByLabelText("Search materials"), "zzzz");
+
+    expect(screen.getByText("No materials match.")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("screws")).not.toBeInTheDocument();
+  });
+
+  it("hides the search when Search is unchecked", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={items} />);
+
+    await user.click(screen.getByRole("button", { name: "Columns" }));
+    await user.click(screen.getByRole("menuitem", { name: "Search" }));
+
+    expect(screen.queryByLabelText("Search materials")).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("screws")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("white silicone")).toBeInTheDocument();
+  });
+
+  it("shows every row again after hiding search with a query still typed", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={items} />);
+
+    await user.type(screen.getByLabelText("Search materials"), "silicone");
+    await user.click(screen.getByRole("button", { name: "Columns" }));
+    await user.click(screen.getByRole("menuitem", { name: "Search" }));
+
+    expect(screen.getByDisplayValue("screws")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("white silicone")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Emulsion paint")).toBeInTheDocument();
+  });
+
+  it("honours a stored search-off preference on first render", () => {
+    window.localStorage.setItem(
+      MATERIALS_COLUMNS_KEY,
+      JSON.stringify({ ...DEFAULT_COLUMN_VISIBILITY, search: false }),
+    );
+    render(<Harness initial={items} />);
+
+    expect(screen.queryByLabelText("Search materials")).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue("screws")).toBeInTheDocument();
+  });
+});
+
 describe("compact type on a narrow viewport", () => {
   function renderList() {
     render(

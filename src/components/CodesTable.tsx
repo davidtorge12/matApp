@@ -35,10 +35,11 @@ import CopyButton from "./CopyButton";
 import { updateCodeMaterials } from "../api";
 import {
   CODE_COLUMNS,
+  CODE_SETTINGS,
   readCodeColumnVisibility,
   toggleCodeColumn,
   writeCodeColumnVisibility,
-  type CodeColumnId,
+  type CodeSettingId,
 } from "../codeColumns";
 import { filterJobCodes, needsMaterialsCount } from "../filterJobCodes";
 import { lastPageIndex, PAGE_SIZE, pageRows } from "../pagination";
@@ -191,7 +192,7 @@ export default function CodesTable({
   const [needsMaterialsOnly, setNeedsMaterialsOnly] = useState(false);
   const columnsOpen = Boolean(columnsAnchor);
 
-  const handleToggleColumn = (id: CodeColumnId) => {
+  const handleToggleColumn = (id: CodeSettingId) => {
     const next = toggleCodeColumn(visibility, id);
     setVisibility(next);
     writeCodeColumnVisibility(next);
@@ -228,15 +229,16 @@ export default function CodesTable({
     />
   );
 
+  const searchQuery = visibility.search ? query : "";
   const filtered = useMemo(
     () =>
       filterJobCodes(data, {
-        query,
+        query: searchQuery,
         needsMaterials: needsMaterialsOnly,
       }),
-    [data, query, needsMaterialsOnly],
+    [data, searchQuery, needsMaterialsOnly],
   );
-  const filterActive = Boolean(query.trim()) || needsMaterialsOnly;
+  const filterActive = Boolean(searchQuery.trim()) || needsMaterialsOnly;
   const pagedFromServer = serverPaged && !filterActive;
   const displayCount = pagedFromServer ? count : filtered.length;
   const rows = pageRows(filtered, page, { serverPaged: pagedFromServer });
@@ -279,6 +281,20 @@ export default function CodesTable({
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
+        {CODE_SETTINGS.map(({ id, label }) => (
+          <MenuItem key={id} onClick={() => handleToggleColumn(id)}>
+            <ListItemIcon>
+              <Checkbox
+                edge="start"
+                checked={visibility[id]}
+                tabIndex={-1}
+                disableRipple
+                inputProps={{ "aria-labelledby": `code-column-${id}` }}
+              />
+            </ListItemIcon>
+            <ListItemText id={`code-column-${id}`}>{label}</ListItemText>
+          </MenuItem>
+        ))}
         <ListSubheader>Visible columns</ListSubheader>
         {CODE_COLUMNS.map(({ id, label }) => (
           <MenuItem key={id} onClick={() => handleToggleColumn(id)}>
@@ -300,24 +316,26 @@ export default function CodesTable({
 
   const filters = (
     <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 2, pb: 1.5 }}>
-      <TextField
-        size="small"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search"
-        fullWidth
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon fontSize="small" />
-            </InputAdornment>
-          ),
-        }}
-        inputProps={{ "aria-label": "Search job codes" }}
-      />
+      {visibility.search ? (
+        <TextField
+          size="small"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search"
+          fullWidth
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+          inputProps={{ "aria-label": "Search job codes" }}
+        />
+      ) : null}
       <Chip
         clickable
-        label={`Needs materials (${incomplete})`}
+        label={`No materials (${incomplete})`}
         onClick={() => setNeedsMaterialsOnly((on) => !on)}
         color={needsMaterialsOnly ? "primary" : "default"}
         variant={needsMaterialsOnly ? "filled" : "outlined"}

@@ -311,7 +311,7 @@ describe("searching and the empty-materials queue", () => {
     const user = userEvent.setup();
     render(<Harness initial={job} />);
 
-    await user.click(screen.getByRole("button", { name: "Needs materials (1)" }));
+    await user.click(screen.getByRole("button", { name: "No materials (1)" }));
 
     expect(screen.getByText("P200")).toBeInTheDocument();
     expect(screen.queryByText("P100")).not.toBeInTheDocument();
@@ -326,6 +326,42 @@ describe("searching and the empty-materials queue", () => {
 
     expect(screen.getByText("No codes match.")).toBeInTheDocument();
     expect(screen.queryByText("P100")).not.toBeInTheDocument();
+  });
+
+  it("hides the search when Search is unchecked", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={job} />);
+
+    await user.click(screen.getByRole("button", { name: "Columns" }));
+    await user.click(screen.getByRole("menuitem", { name: "Search" }));
+
+    expect(screen.queryByLabelText("Search job codes")).not.toBeInTheDocument();
+    expect(screen.getByText("P100")).toBeInTheDocument();
+    expect(screen.getByText("P200")).toBeInTheDocument();
+  });
+
+  it("shows every row again after hiding search with a query still typed", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={job} />);
+
+    await user.type(screen.getByLabelText("Search job codes"), "deadlock");
+    await user.click(screen.getByRole("button", { name: "Columns" }));
+    await user.click(screen.getByRole("menuitem", { name: "Search" }));
+
+    expect(screen.getByText("P100")).toBeInTheDocument();
+    expect(screen.getByText("P200")).toBeInTheDocument();
+    expect(screen.getByText("390915")).toBeInTheDocument();
+  });
+
+  it("honours a stored search-off preference on first render", () => {
+    window.localStorage.setItem(
+      CODES_COLUMNS_KEY,
+      JSON.stringify({ ...DEFAULT_CODE_COLUMN_VISIBILITY, search: false }),
+    );
+    render(<Harness initial={job} />);
+
+    expect(screen.queryByLabelText("Search job codes")).not.toBeInTheDocument();
+    expect(screen.getByText("P100")).toBeInTheDocument();
   });
 });
 

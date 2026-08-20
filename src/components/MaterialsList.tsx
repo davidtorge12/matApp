@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   closestCenter,
   DndContext,
@@ -17,6 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import AddIcon from "@mui/icons-material/Add";
+import SearchIcon from "@mui/icons-material/Search";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {
   Box,
@@ -28,6 +29,7 @@ import {
   CardHeader,
   Checkbox,
   IconButton,
+  InputAdornment,
   ListItemIcon,
   ListItemText,
   ListSubheader,
@@ -38,18 +40,21 @@ import {
   Snackbar,
   Stack,
   TableSortLabel,
+  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
 import SortableMaterialRow, { rowGridSx } from "./SortableMaterialRow";
 import { buildCopyText } from "../copyText";
 import { newId } from "../id";
+import { filterMaterials } from "../filterMaterials";
 import {
   MATERIAL_COLUMNS,
+  MATERIAL_SETTINGS,
   readColumnVisibility,
   toggleColumn,
   writeColumnVisibility,
-  type MaterialColumnId,
+  type MaterialSettingId,
 } from "../materialColumns";
 import { mergeDuplicateMaterial } from "../mergeDuplicateMaterial";
 import { formatMoney } from "../money";
@@ -165,6 +170,7 @@ export default function MaterialsList({
   const [columnsAnchor, setColumnsAnchor] = useState<HTMLElement | null>(null);
   const [visibility, setVisibility] = useState(readColumnVisibility);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   // MouseSensor and TouchSensor rather than PointerSensor: touch needs a short
   // press before a drag starts, otherwise the gesture competes with scrolling.
@@ -182,6 +188,12 @@ export default function MaterialsList({
 
   const activeMaterial = allMaterials.find((m) => m.id === activeId) ?? null;
   const columnsOpen = Boolean(columnsAnchor);
+  const visibleMaterials = useMemo(
+    () => (visibility.search ? filterMaterials(allMaterials, query) : allMaterials),
+    [allMaterials, query, visibility.search],
+  );
+  const emptyFilter =
+    Boolean(allMaterials.length) && visibleMaterials.length === 0;
 
   const copy = async (withPrices: boolean) => {
     try {
@@ -231,13 +243,14 @@ export default function MaterialsList({
 
   const addMaterial = () => {
     setSort(null);
+    setQuery("");
     setAllMaterials([
       ...allMaterials,
       { id: newId(), material: "", price: 0, units: 0 },
     ]);
   };
 
-  const handleToggleColumn = (id: MaterialColumnId) => {
+  const handleToggleColumn = (id: MaterialSettingId) => {
     const next = toggleColumn(visibility, id);
     setVisibility(next);
     writeColumnVisibility(next);
@@ -300,6 +313,20 @@ export default function MaterialsList({
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
+        {MATERIAL_SETTINGS.map(({ id, label }) => (
+          <MenuItem key={id} onClick={() => handleToggleColumn(id)}>
+            <ListItemIcon>
+              <Checkbox
+                edge="start"
+                checked={visibility[id]}
+                tabIndex={-1}
+                disableRipple
+                inputProps={{ "aria-labelledby": `column-${id}` }}
+              />
+            </ListItemIcon>
+            <ListItemText id={`column-${id}`}>{label}</ListItemText>
+          </MenuItem>
+        ))}
         <ListSubheader>Visible columns</ListSubheader>
         {MATERIAL_COLUMNS.map(({ id, label }) => (
           <MenuItem key={id} onClick={() => handleToggleColumn(id)}>
@@ -349,12 +376,32 @@ export default function MaterialsList({
           overscrollBehavior: "contain",
         }}
       >
+        {visibility.search && allMaterials.length ? (
+          <TextField
+            size="small"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search"
+            fullWidth
+            sx={{ mb: 1.5 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+            inputProps={{ "aria-label": "Search materials" }}
+          />
+        ) : null}
         {loading && !allMaterials.length ? (
           <MaterialsListSkeleton rows={skeletonCount} visibility={visibility} />
         ) : !allMaterials.length ? (
           <Typography color="text.secondary">
             No materials on this page. Upload a job file or add one below.
           </Typography>
+        ) : emptyFilter ? (
+          <Typography color="text.secondary">No materials match.</Typography>
         ) : (
           <DndContext
             sensors={sensors}
@@ -364,7 +411,7 @@ export default function MaterialsList({
             onDragCancel={() => setActiveId(null)}
           >
             <SortableContext
-              items={allMaterials.map((m) => m.id)}
+              items={visibleMaterials.map((m) => m.id)}
               strategy={verticalListSortingStrategy}
             >
               <Stack spacing={0.5}>
@@ -406,7 +453,7 @@ export default function MaterialsList({
                   ) : null}
                   {visibility.delete ? <span /> : null}
                 </Box>
-                {allMaterials.map(
+                {visibleMaterials.map(
                   ({ id, material, price, units }: MaterialsType) => (
                     <SortableMaterialRow
                       key={id}

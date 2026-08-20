@@ -43,6 +43,14 @@ describe("parseCodeColumnVisibility", () => {
       comments: true,
       materials: true,
       copy: true,
+      search: true,
+    });
+  });
+
+  it("turns search off when it is explicitly false", () => {
+    expect(parseCodeColumnVisibility({ search: false })).toEqual({
+      ...DEFAULT_CODE_COLUMN_VISIBILITY,
+      search: false,
     });
   });
 });

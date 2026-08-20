@@ -41,6 +41,14 @@ describe("parseColumnVisibility", () => {
       price: true,
       lineTotal: true,
       delete: true,
+      search: true,
+    });
+  });
+
+  it("turns search off when it is explicitly false", () => {
+    expect(parseColumnVisibility({ search: false })).toEqual({
+      ...DEFAULT_COLUMN_VISIBILITY,
+      search: false,
     });
   });
 });

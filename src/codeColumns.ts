@@ -7,16 +7,24 @@ export const CODE_COLUMNS = [
   { id: "copy", label: "Copy" },
 ] as const;
 
-export type CodeColumnId = (typeof CODE_COLUMNS)[number]["id"];
+export const CODE_SETTINGS = [{ id: "search", label: "Search" }] as const;
 
-export type CodeColumnVisibility = Record<CodeColumnId, boolean>;
+export type CodeColumnId = (typeof CODE_COLUMNS)[number]["id"];
+export type CodeSettingId =
+  | CodeColumnId
+  | (typeof CODE_SETTINGS)[number]["id"];
+
+export type CodeColumnVisibility = Record<CodeSettingId, boolean>;
 
 export const DEFAULT_CODE_COLUMN_VISIBILITY: CodeColumnVisibility = {
   description: true,
   comments: true,
   materials: true,
   copy: true,
+  search: true,
 };
+
+const VISIBILITY_KEYS = [...CODE_COLUMNS, ...CODE_SETTINGS];
 
 export function parseCodeColumnVisibility(raw: unknown): CodeColumnVisibility {
   if (!raw || typeof raw !== "object") {
@@ -24,10 +32,10 @@ export function parseCodeColumnVisibility(raw: unknown): CodeColumnVisibility {
   }
 
   const next = { ...DEFAULT_CODE_COLUMN_VISIBILITY };
-  for (const column of CODE_COLUMNS) {
-    const value = (raw as Record<string, unknown>)[column.id];
+  for (const setting of VISIBILITY_KEYS) {
+    const value = (raw as Record<string, unknown>)[setting.id];
     if (typeof value === "boolean") {
-      next[column.id] = value;
+      next[setting.id] = value;
     }
   }
   return next;
@@ -35,7 +43,7 @@ export function parseCodeColumnVisibility(raw: unknown): CodeColumnVisibility {
 
 export function toggleCodeColumn(
   current: CodeColumnVisibility,
-  id: CodeColumnId,
+  id: CodeSettingId,
 ): CodeColumnVisibility {
   return { ...current, [id]: !current[id] };
 }
